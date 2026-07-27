@@ -621,9 +621,7 @@ function setTopbar(v){
   const tb=$("topbar"); if(!tb)return;
   const who = meProfile ? `<div class="who"><b>${esc(meProfile.firm_name)}</b><br>${esc(meProfile.email||"")}</div>` : "";
   if(v==="app"){
-    tb.innerHTML = `<span class="badge" id="badge">Internal</span>
-      <button class="btn ghost mini no-print" onclick="toggleGuest()" id="gbtn">Guest preview</button>
-      <button class="btn ghost mini no-print" onclick="backToDash()">← Budgets</button>
+    tb.innerHTML = `<button class="btn ghost mini no-print" onclick="backToDash()">← Budgets</button>
       <button class="btn primary mini no-print" onclick="saveBudget()">💾 Save</button>`;
   } else if(v==="dashboard"||v==="admin"){
     tb.innerHTML = who + `<button class="btn ghost mini" onclick="doLogout()">Sign out</button>`;
