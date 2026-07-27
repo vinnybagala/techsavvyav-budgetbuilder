@@ -322,10 +322,10 @@ const ROOM_TYPES=["Great Room","Living Room","Family Room","Kitchen","Dining Roo
    NOTE: labor ~68% of equipment typical (gear-dependent; Bunting's 46% is a likely low outlier, client-provided gear inflates it) — all-in rates already include it. Video head-end scales with # video rooms (control fix).
    OPEN ITEMS: HVAC ($15k estate) & prewire-per-SF not yet modeled as systems. */
 const SYSTEMS={
-  network:{name:"Network & Structured Wiring",ico:"🌐",unit:"room",
-    blurb:"The wired foundation the whole home runs on — Cat6/6A structured cabling, managed switching, firewall, and business-class WiFi engineered for full, reliable coverage.",
-    headend:{label:"Rack, managed switch, firewall, UPS & remote monitoring",price:9500},
-    tiers:{Good:{price:1200,mean:"Eero mesh AP + drops (value)"},Better:{price:2000,mean:"Enterprise drops + ceiling WiFi AP (standard)"},Best:{price:2800,mean:"Drops + AP + coax + spare conduit"}},
+  network:{name:"Network & Structured Wiring",ico:"🌐",unit:"SF",basis:"sf",
+    blurb:"The wired foundation the whole home runs on — Cat6/6A structured cabling, managed switching, firewall, and business-class WiFi. Access-point count and drops scale with the home's size, so it's priced per square foot (rack and head-end included).",
+    headend:null,
+    tiers:{Good:{price:3.5,mean:"Eero mesh / value WiFi"},Better:{price:4.8,mean:"Enterprise APs + full structured wiring (standard)"},Best:{price:6.5,mean:"Enterprise + firewall + redundancy / multi-building"}},
     q:[{k:"prewire",label:"Prewire extent",opts:["Basic — occupied rooms only","Standard — whole home","Future-proof — max drops + spare conduit"]}]},
   control:{name:"Home Control System",ico:"🎛️",unit:"interface",
     blurb:"The processor and programming that unify every system into one experience — operated from handheld remotes, in-wall touchscreens, and the app. Control4, Savant, Crestron, or URC.",
@@ -374,6 +374,7 @@ let structure=[];
 let selected=new Set();
 let assign={};
 let sysAnswers={};
+let sfTier={};  // tier selection for square-foot-priced systems (e.g. network), keyed by system
 
 function seed(){
   const b={id:bid++,name:"Main House",floors:[]};
@@ -406,10 +407,15 @@ function rebuildAssign(){
 /* head-end (infrastructure) cost per system — a flat per-project figure added when the system has any rooms.
    Home Control now scales naturally via per-interface pricing, so head-ends are fixed. */
 function headendPrice(k){const S=SYSTEMS[k];if(!S||!S.headend)return 0;return S.headend.price;}
-function systemRoomCost(k){const S=SYSTEMS[k];let sum=0,anyOn=false;
+function homeSFval(){return Math.max(0,parseFloat(project.homeSF)||0);}
+function systemRoomCost(k){const S=SYSTEMS[k];
+  if(S.basis==='sf'){const t=sfTier[k]||'Better';return (S.tiers[t]?S.tiers[t].price:0)*homeSFval();}
+  let sum=0,anyOn=false;
   allRooms().forEach(r=>{const a=assign[k]&&assign[k][r.id];if(a&&a.on){anyOn=true;sum+=S.tiers[a.tier].price*(a.qty||1);}});
   if(anyOn&&S.headend)sum+=headendPrice(k);return sum;}
-function systemSpanCost(k,tier){const S=SYSTEMS[k];let sum=0,anyOn=false;
+function systemSpanCost(k,tier){const S=SYSTEMS[k];
+  if(S.basis==='sf'){return (S.tiers[tier]?S.tiers[tier].price:0)*homeSFval();}
+  let sum=0,anyOn=false;
   allRooms().forEach(r=>{const a=assign[k]&&assign[k][r.id];if(a&&a.on){anyOn=true;sum+=S.tiers[tier].price*(a.qty||1);}});
   if(anyOn&&S.headend)sum+=headendPrice(k);return sum;}
 function directTotal(){let s=0;selected.forEach(k=>s+=systemRoomCost(k));return s;}
@@ -418,9 +424,10 @@ function investLevel(total){
   if(total<100000)return {name:"Essential",cls:"g",blurb:"Core connectivity & comfort"};
   if(total<300000)return {name:"Signature",cls:"b",blurb:"Fully integrated smart home"};
   return {name:"Estate",cls:"p",blurb:"Reference-grade, no compromises"};}
-function setWholeHome(t){allRooms().forEach(r=>{selected.forEach(k=>{
-  const def=(k==='video')?(r.type==='Media / Theater'):true;
-  assign[k][r.id].on=def;if(!SYSTEMS[k].flat)assign[k][r.id].tier=t;});});render();}
+function setWholeHome(t){selected.forEach(k=>{if(SYSTEMS[k].basis==='sf')sfTier[k]=t;});
+  allRooms().forEach(r=>{selected.forEach(k=>{if(SYSTEMS[k].basis==='sf')return;
+    const def=(k==='video')?(r.type==='Media / Theater'):true;
+    assign[k][r.id].on=def;if(!SYSTEMS[k].flat)assign[k][r.id].tier=t;});});render();}
 function totals(){const direct=directTotal();
   const cPct=guest?0:project.cont/100;
   const cont=direct*cPct;return {direct,design:0,cont,total:direct+cont};}
@@ -491,6 +498,23 @@ function screenConfigure(){
       <button class="qbtn b" onclick="setWholeHome('Better')">Better</button>
       <button class="qbtn p" onclick="setWholeHome('Best')">Best</button></div></div>`;
   Array.from(selected).forEach(k=>{const S=SYSTEMS[k];const cost=systemRoomCost(k);
+    if(S.basis==='sf'){const sf=homeSFval();const t=sfTier[k]||'Better';
+      h+=`<div class="cfg"><div class="hd"><span class="ico">${S.ico}</span><span class="nm">${S.name}</span><span class="sub">${money(cost)}</span></div>
+        <div class="bd">
+          <div class="field" style="max-width:280px"><label>Home size (square feet)</label>
+            <input type="number" min="0" value="${project.homeSF||''}" placeholder="e.g. 5000" onchange="setP('homeSF',this.value)"></div>
+          <div class="tierlegend">
+            <span><b class="pill g">Good</b> ${S.tiers.Good.mean} · $${S.tiers.Good.price}/SF</span>
+            <span><b class="pill b">Better</b> ${S.tiers.Better.mean} · $${S.tiers.Better.price}/SF</span>
+            <span><b class="pill p">Best</b> ${S.tiers.Best.mean} · $${S.tiers.Best.price}/SF</span></div>`;
+      if(S.q&&S.q.length&&!guest){h+=S.q.map(q=>`<div class="q"><label>${q.label}</label><select onchange="setAns('${k}','${q.k}',this.value)">${q.opts.map(o=>`<option ${((sysAnswers[k]||{})[q.k]===o)?'selected':''}>${o}</option>`).join("")}</select></div>`).join("");}
+      h+=`<div class="quickset no-print"><span class="lb">Grade:</span>
+            <button class="qbtn g" onclick="setSfTier('${k}','Good')">Good</button>
+            <button class="qbtn b" onclick="setSfTier('${k}','Better')">Better</button>
+            <button class="qbtn p" onclick="setSfTier('${k}','Best')">Best</button></div>
+          <div class="assignrow"><div><b>${sf?sf.toLocaleString():'—'} SF</b> × $${S.tiers[t].price}/SF<div class="loc">${t} grade${sf?'':' — enter home size above'}</div></div><div></div><div></div><div class="rowline">${money(cost)}</div></div>
+        </div></div>`;
+      return;}
     h+=`<div class="cfg"><div class="hd"><span class="ico">${S.ico}</span><span class="nm">${S.name}</span><span class="sub">${money(cost)}</span></div>
       <div class="bd"><div class="tierlegend">${S.flat?
         `<span><b class="pill b">Standard</b> ${S.tiers.Good.mean} · ${money(S.tiers.Good.price)}/${S.unit}</span>`:
@@ -523,6 +547,7 @@ function screenConfigure(){
 function setAns(k,q,v){if(!sysAnswers[k])sysAnswers[k]={};sysAnswers[k][q]=v;}
 function toggleRoom(k,id){assign[k][id].on=!assign[k][id].on;render();}
 function setTier(k,id,v){assign[k][id].tier=v.split(" · ")[0];render();}
+function setSfTier(k,t){sfTier[k]=t;render();}
 function setQty(k,id,v){assign[k][id].qty=Math.max(1,parseInt(v)||1);render();}
 function setAll(k,t){allRooms().forEach(r=>{if(assign[k][r.id].on)assign[k][r.id].tier=t;});render();}
 function allOn(k,v){allRooms().forEach(r=>assign[k][r.id].on=v);render();}
@@ -569,11 +594,16 @@ function screenReport(){
         <div style="margin-top:5px"><span class="pill ${investLevel(t.total).cls}">${investLevel(t.total).name} tier</span></div></div></div>`;
 
   Array.from(selected).forEach(k=>{const S=SYSTEMS[k];const cost=systemRoomCost(k);if(cost===0)return;
-    const incl=rooms.filter(r=>assign[k][r.id]&&assign[k][r.id].on);
     const lo=systemSpanCost(k,'Good'),hi=systemSpanCost(k,'Best');
     h+=`<div class="rsys"><div class="hd"><span>${S.ico}</span><span class="nm">${S.name}</span><span class="amt">${money(cost)}</span></div>
-      <div class="desc">${S.blurb}${sysDesc(k)}${lo!==hi?`<div class="note" style="margin-top:6px">Across quality levels (Good → Best): ${money(lo)} – ${money(hi)}</div>`:''}</div>
-      <table><thead><tr><th>Room</th><th>Location</th><th>Quality</th><th class="n">Qty</th><th class="n">Budget</th></tr></thead><tbody>`;
+      <div class="desc">${S.blurb}${sysDesc(k)}${lo!==hi?`<div class="note" style="margin-top:6px">Across quality levels (Good → Best): ${money(lo)} – ${money(hi)}</div>`:''}</div>`;
+    if(S.basis==='sf'){const t=sfTier[k]||'Better';
+      h+=`<table><thead><tr><th>Basis</th><th>Grade</th><th class="n">Home SF</th><th class="n">$/SF</th><th class="n">Budget</th></tr></thead><tbody>
+        <tr><td style="color:var(--ink);font-weight:600">Whole home</td><td><span class="pill ${TIERCLASS[t]}">${t}</span> <span class="note">${S.tiers[t].mean}</span></td>
+        <td class="n">${homeSFval().toLocaleString()}</td><td class="n">$${S.tiers[t].price}</td><td class="n">${money(cost)}</td></tr>
+        </tbody></table></div>`;return;}
+    const incl=rooms.filter(r=>assign[k][r.id]&&assign[k][r.id].on);
+    h+=`<table><thead><tr><th>Room</th><th>Location</th><th>Quality</th><th class="n">Qty</th><th class="n">Budget</th></tr></thead><tbody>`;
     incl.forEach(r=>{const a=assign[k][r.id];const tc=TIERCLASS[a.tier];
       h+=`<tr><td style="color:var(--ink);font-weight:600">${esc(r.name)}</td><td class="note">${esc(r.floor)}</td>
         <td><span class="pill ${S.flat?'b':tc}">${S.flat?'Standard':a.tier}</span> <span class="note">${S.tiers[a.tier].mean}</span></td>
@@ -684,16 +714,16 @@ async function showDash(){
 function fmtDate(s){if(!s)return"";const d=new Date(s);return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});}
 
 /* ---------- serialize / hydrate ---------- */
-function serialize(){return {structure,selected:[...selected],assign,sysAnswers,project,ids:{rid,fid,bid}};}
+function serialize(){return {structure,selected:[...selected],assign,sysAnswers,sfTier,project,ids:{rid,fid,bid}};}
 function hydrate(d){
-  structure=d.structure||[]; selected=new Set(d.selected||[]); assign=d.assign||{}; sysAnswers=d.sysAnswers||{};
+  structure=d.structure||[]; selected=new Set(d.selected||[]); assign=d.assign||{}; sysAnswers=d.sysAnswers||{}; sfTier=d.sfTier||{};
   Object.assign(project,d.project||{});
   if(d.ids){rid=d.ids.rid||1;fid=d.ids.fid||1;bid=d.ids.bid||1;}
   rebuildAssign();
 }
 function freshState(){
   rid=1;fid=1;bid=1; structure=[{id:bid++,name:"Main House",floors:[{id:fid++,name:"Main Level",rooms:[]}]}];
-  selected=new Set(["network","control","audio","video","lighting"]); assign={}; sysAnswers={};
+  selected=new Set(["network","control","audio","video","lighting"]); assign={}; sysAnswers={}; sfTier={network:"Better"};
   Object.assign(project,{name:"New Residence",client:"",gc:"",arch:"",band:20,design:8,cont:12,homeSF:0});
   rebuildAssign(); guest=false; step=0; currentBudgetId=null;
 }
