@@ -323,37 +323,42 @@ const ROOM_TYPES=["Great Room","Living Room","Family Room","Kitchen","Dining Roo
    OPEN ITEMS: HVAC ($15k estate) & prewire-per-SF not yet modeled as systems. */
 const SYSTEMS={
   network:{name:"Network & Structured Wiring",ico:"🌐",unit:"room",
-    blurb:"The wired backbone — data drops, managed switching, and enterprise WiFi that every other system rides on. Tech Savvy's baseline is enterprise-grade.",
-    headend:{label:"Rack, managed switch, UPS, patch & remote monitoring",price:9500},
+    blurb:"The wired foundation the whole home runs on — Cat6/6A structured cabling, managed switching, firewall, and business-class WiFi engineered for full, reliable coverage.",
+    headend:{label:"Rack, managed switch, firewall, UPS & remote monitoring",price:9500},
     tiers:{Good:{price:1200,mean:"Eero mesh AP + drops (value)"},Better:{price:2000,mean:"Enterprise drops + ceiling WiFi AP (standard)"},Best:{price:2800,mean:"Drops + AP + coax + spare conduit"}},
     q:[{k:"prewire",label:"Prewire extent",opts:["Basic — occupied rooms only","Standard — whole home","Future-proof — max drops + spare conduit"]}]},
+  control:{name:"Home Control System",ico:"🎛️",unit:"interface",
+    blurb:"The processor and programming that unify every system into one experience — operated from handheld remotes, in-wall touchscreens, and the app. Control4, Savant, Crestron, or URC.",
+    headend:{label:"Control processor & system programming",price:9000},
+    tiers:{Good:{price:1000,mean:"Handheld remote / keypad (Control4, URC)"},Better:{price:1600,mean:"In-wall touchscreen (Savant / Control4)"},Best:{price:2800,mean:"Crestron / premium touch interface"}},
+    q:[{k:"platform",label:"Control platform",opts:["Control4","Savant","Crestron","URC","Best fit"]}]},
   audio:{name:"Multi-Room Audio",ico:"🔊",unit:"zone",
-    blurb:"Distributed music by room, streamed and controlled from phone, keypad, or voice.",
+    blurb:"Streaming audio to architectural speakers throughout the home and outdoors — independent volume and sources by room, controlled from keypad, touchscreen, app, or voice.",
     headend:{label:"Streaming sources & multi-zone amplification",price:8000},
     tiers:{Good:{price:3000,mean:"Standard in-ceiling speakers (Sonance VX)"},Better:{price:9500,mean:"Invisible / plaster-in speakers"},Best:{price:14000,mean:"Reference invisible + in-room sub"}},
     q:[{k:"out",label:"Outdoor zones?",opts:["None","1–2 (patio / deck)","3+"]}]},
   video:{name:"Video & TV",ico:"📺",unit:"TV",
-    blurb:"Televisions and surround systems, room by room — displays, mounts, sources, and the control that ties it together (Control4 remotes live here).",
-    headend:{label:"Control processor, AV rack & programming — scales with # video rooms",price:12000},
+    blurb:"Televisions and dedicated media rooms — displays mounted or concealed, shared sources, and surround sound, all wired and calibrated. From a single TV to a full theater.",
+    headend:{label:"Video matrix & AV distribution rack",price:4500},
     tiers:{Good:{price:4000,mean:"Display + mount + source"},Better:{price:11000,mean:"Display + premium soundbar + sub"},Best:{price:22000,mean:"Frame display + full surround + sub"}},
-    q:[{k:"remote",label:"Handheld remotes",opts:["App only","1 per media room","Halo remote every room"]}]},
+    q:[{k:"display",label:"Display style",opts:["Standard mount","Recessed / concealed","The Frame / art-mode","Projector + screen"]}]},
   lighting:{name:"Lighting Control",ico:"💡",unit:"keypad",
-    blurb:"Scene-based control with elegant keypads replacing cluttered switch banks. Priced per keypad / control point.",
+    blurb:"Programmable lighting with elegant keypads and dimmers in place of cluttered switch banks — everyday scenes plus whole-home 'goodnight' and 'away.' Lutron or Control4, priced per keypad.",
     headend:null,
     tiers:{Good:{price:1100,mean:"Control4 / RA3 / Maestro wireless dimmers"},Better:{price:2800,mean:"Lutron HomeWorks wired (standard)"},Best:{price:4200,mean:"HomeWorks + custom keypads (Forbes & Lomax) / Ketra"}},
     q:[{k:"eco",label:"Platform",opts:["Lutron HomeWorks (wired)","Lutron RA3 (wireless)","Ketra"]}]},
-  shades:{name:"Motorized Shades",ico:"🪟",unit:"opening",
-    blurb:"Automated shades on scenes and schedules for light, privacy, and heat.",
-    headend:{label:"Lutron QS shade panel & integration",price:2500},
-    tiers:{Good:{price:1600,mean:"Battery roller (RA3), standard fabric"},Better:{price:4500,mean:"Hardwired Lutron, premium fabric (standard)"},Best:{price:6500,mean:"Hardwired dual/blackout, custom trim"}},
+  shades:{name:"Motorized Shades & Curtains",ico:"🪟",unit:"opening",
+    blurb:"Automated shades, drapery, and curtains on scenes and schedules — managing daylight, glare, privacy, and heat. Battery or hardwired, standard fabrics through blackout and custom.",
+    headend:{label:"Lutron shade hub & integration",price:2500},
+    tiers:{Good:{price:1600,mean:"Battery roller, standard fabric"},Better:{price:4500,mean:"Hardwired roller, premium fabric (standard)"},Best:{price:6500,mean:"Hardwired blackout / drapery, custom"}},
     q:[]},
   surveillance:{name:"Surveillance Cameras",ico:"📹",unit:"camera",
-    blurb:"IP camera coverage with local recording and remote viewing.",
+    blurb:"IP camera coverage with local or cloud recording and remote viewing — from residential cameras to 4K AI-verified security at entries, gates, and the perimeter.",
     headend:{label:"NVR / recorder & storage",price:3500},
     tiers:{Good:{price:850,mean:"1080p / battery (Ring)"},Better:{price:1900,mean:"4K fixed IP (UniFi Protect)"},Best:{price:2800,mean:"8MP varifocal / PTZ / gate runs"}},
     q:[]},
   access:{name:"Entry & Access",ico:"🚪",unit:"entry",flat:true,
-    blurb:"Video entry stations, smart locks, and gate integration. Single standard build.",
+    blurb:"Video intercom entry, smart locks, and gate or driveway integration — see and speak to anyone at the door or gate, and control who gets in.",
     headend:{label:"Access controller & integration",price:1500},
     tiers:{Good:{price:2750,mean:"DoorBird station (per entry)"},Better:{price:2750,mean:"DoorBird station (per entry)"},Best:{price:2750,mean:"DoorBird station (per entry)"}},
     q:[]},
@@ -398,11 +403,9 @@ function rebuildAssign(){
   const rooms=allRooms();
   selected.forEach(k=>{rooms.forEach(r=>{if(!assign[k][r.id])assign[k][r.id]={on:false,tier:"Better",qty:1};});});
 }
-/* head-end cost. Video "brain" (control) scales with # of video rooms (remotes/touchscreens + programming),
-   calibrated from jobs where control ran ~$6k (few remotes) to ~$37k (estate). Other systems use a flat head-end. */
-function headendPrice(k){const S=SYSTEMS[k];if(!S||!S.headend)return 0;
-  if(k==='video'){let n=0;allRooms().forEach(r=>{if(assign[k]&&assign[k][r.id]&&assign[k][r.id].on)n++;});return 5000+1300*n;}
-  return S.headend.price;}
+/* head-end (infrastructure) cost per system — a flat per-project figure added when the system has any rooms.
+   Home Control now scales naturally via per-interface pricing, so head-ends are fixed. */
+function headendPrice(k){const S=SYSTEMS[k];if(!S||!S.headend)return 0;return S.headend.price;}
 function systemRoomCost(k){const S=SYSTEMS[k];let sum=0,anyOn=false;
   allRooms().forEach(r=>{const a=assign[k]&&assign[k][r.id];if(a&&a.on){anyOn=true;sum+=S.tiers[a.tier].price*(a.qty||1);}});
   if(anyOn&&S.headend)sum+=headendPrice(k);return sum;}
@@ -695,7 +698,7 @@ function hydrate(d){
 }
 function freshState(){
   rid=1;fid=1;bid=1; structure=[{id:bid++,name:"Main House",floors:[{id:fid++,name:"Main Level",rooms:[]}]}];
-  selected=new Set(["network","audio","video","lighting"]); assign={}; sysAnswers={};
+  selected=new Set(["network","control","audio","video","lighting"]); assign={}; sysAnswers={};
   Object.assign(project,{name:"New Residence",client:"",gc:"",arch:"",band:20,design:8,cont:12,homeSF:0});
   rebuildAssign(); guest=false; step=0; currentBudgetId=null;
 }
