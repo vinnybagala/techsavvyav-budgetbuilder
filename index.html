@@ -368,7 +368,7 @@ const TIERCLASS={Good:"g",Better:"b",Best:"p"};
 
 /* ============================================================ STATE ============================================================ */
 let step=0, guest=false;
-const project={name:"New Residence",client:"",gc:"",arch:"",band:20,design:8,cont:12,homeSF:7100};
+const project={name:"New Residence",client:"",gc:"",arch:"",band:20,cont:12,tax:8.625,freight:2,homeSF:7100};
 let rid=1, fid=1, bid=1;
 let structure=[];
 let selected=new Set();
@@ -428,9 +428,14 @@ function setWholeHome(t){selected.forEach(k=>{if(SYSTEMS[k].basis==='sf')sfTier[
   allRooms().forEach(r=>{selected.forEach(k=>{if(SYSTEMS[k].basis==='sf')return;
     const def=(k==='video')?(r.type==='Media / Theater'):true;
     assign[k][r.id].on=def;if(!SYSTEMS[k].flat)assign[k][r.id].tier=t;});});render();}
+/* Equipment is ~60% of the all-in systems cost (labor ~40% is untaxed). Sales tax & freight apply to that equipment portion. */
+const EQUIP_SHARE=0.60;
 function totals(){const direct=directTotal();
-  const cPct=guest?0:project.cont/100;
-  const cont=direct*cPct;return {direct,design:0,cont,total:direct+cont};}
+  const cont=direct*(project.cont||0)/100;
+  const equip=direct*EQUIP_SHARE;
+  const tax=equip*(parseFloat(project.tax)||0)/100;
+  const freight=equip*(parseFloat(project.freight)||0)/100;
+  return {direct,design:0,cont,tax,freight,total:direct+cont+tax+freight};}
 
 const STEPS=["Structure","Systems","Configure","Report"];
 function renderStepper(){$("stepper").innerHTML=STEPS.map((s,i)=>
@@ -560,7 +565,9 @@ function railHTML(){const t=totals();const band=project.band/100;
       <div style="margin-top:8px"><span class="pill ${investLevel(t.total).cls}">${investLevel(t.total).name}</span> <span class="note">${investLevel(t.total).blurb}</span></div>
       ${project.homeSF>0?`<div class="note" style="margin-top:6px">${money(t.total/project.homeSF)} / SF</div>`:''}</div>
     <div class="sumline"><span class="l">Systems (direct)</span><span>${money(t.direct)}</span></div>
-    <div class="sumline"><span class="l">Contingency ${guest?'':project.cont+'%'}</span><span>${money(t.cont)}</span></div>
+    <div class="sumline"><span class="l">Contingency ${project.cont}%</span><span>${money(t.cont)}</span></div>
+    <div class="sumline"><span class="l">Sales tax ${project.tax}%</span><span>${money(t.tax)}</span></div>
+    <div class="sumline"><span class="l">Freight ${project.freight}%</span><span>${money(t.freight)}</span></div>
     <div class="sumline tot"><span>Total Budget</span><span>${money(t.total)}</span></div>
     <div class="note" style="margin-top:10px">${selected.size} systems · ${allRooms().length} rooms</div></div></div>`;
 }
@@ -573,10 +580,13 @@ function screenReport(){
       <div class="field"><label>Project</label><input value="${esc(project.name)}" onchange="setP('name',this.value)"></div>
       <div class="field"><label>Client</label><input value="${esc(project.client)}" onchange="setP('client',this.value)"></div>
       <div class="field"><label>Builder / GC</label><input value="${esc(project.gc)}" onchange="setP('gc',this.value)"></div></div>
-    <div class="row3 ${guest?'hide':''}">
+    <div class="row3">
       <div class="field"><label>Contingency %</label><input type="number" value="${project.cont}" onchange="setP('cont',this.value)"></div>
-      <div class="field"><label>Budget band ±%</label><input type="number" value="${project.band}" onchange="setP('band',this.value)"></div><div></div></div>
-    <div class="row3"><div class="field"><label>Home size (SF)</label><input type="number" value="${project.homeSF}" onchange="setP('homeSF',this.value)"></div><div></div><div></div></div>
+      <div class="field"><label>Sales tax % (on equipment)</label><input type="number" step="0.001" value="${project.tax}" onchange="setP('tax',this.value)"></div>
+      <div class="field"><label>Freight % (on equipment)</label><input type="number" step="0.1" value="${project.freight}" onchange="setP('freight',this.value)"></div></div>
+    <div class="row3">
+      <div class="field"><label>Budget band ±%</label><input type="number" value="${project.band}" onchange="setP('band',this.value)"></div>
+      <div class="field"><label>Home size (SF)</label><input type="number" value="${project.homeSF}" onchange="setP('homeSF',this.value)"></div><div></div></div>
     <button class="btn primary mini" onclick="window.print()">⬇ Export / Print PDF</button></div>`;
 
   h+=`<div class="card">
@@ -613,7 +623,9 @@ function screenReport(){
 
   h+=`<table style="margin-top:10px"><tbody>
     <tr><td><b style="color:var(--ink)">Systems subtotal (direct)</b></td><td class="n"><b style="color:var(--ink)">${money(t.direct)}</b></td></tr>`;
-  if(!guest){h+=`<tr><td>Contingency (${project.cont}%)</td><td class="n">${money(t.cont)}</td></tr>`;}
+  h+=`<tr><td>Contingency (${project.cont}%)</td><td class="n">${money(t.cont)}</td></tr>
+    <tr><td>Sales tax (${project.tax}% on equipment)</td><td class="n">${money(t.tax)}</td></tr>
+    <tr><td>Freight (${project.freight}% on equipment)</td><td class="n">${money(t.freight)}</td></tr>`;
   h+=`<tr><td style="font-size:17px"><b style="color:var(--ink)">Total Budget</b></td><td class="n" style="font-size:17px"><b style="color:var(--accent2)">${money(t.total)}</b></td></tr></tbody></table>
     <p class="note" style="margin-top:14px">This is a professional-grade planning budget, not a proposal. The range reflects design maturity at this early stage — it narrows as scope is finalized, it does not mean the scope is uncertain. Figures cover fully-installed, integrated systems (equipment, wiring, programming, and labor), not retail hardware. Unit pricing is calibrated from Tech Savvy proposal data (starting point — refines as more jobs are added). Prepared ${today()}.</p></div>
     <div class="navbtns no-print"><button class="btn ghost" onclick="back()">← Back to configure</button><span></span></div>`;
@@ -724,7 +736,7 @@ function hydrate(d){
 function freshState(){
   rid=1;fid=1;bid=1; structure=[{id:bid++,name:"Main House",floors:[{id:fid++,name:"Main Level",rooms:[]}]}];
   selected=new Set(["network","control","audio","video","lighting"]); assign={}; sysAnswers={}; sfTier={network:"Better"};
-  Object.assign(project,{name:"New Residence",client:"",gc:"",arch:"",band:20,design:8,cont:12,homeSF:0});
+  Object.assign(project,{name:"New Residence",client:"",gc:"",arch:"",band:20,cont:12,tax:8.625,freight:2,homeSF:0});
   rebuildAssign(); guest=false; step=0; currentBudgetId=null;
 }
 function newBudget(){ freshState(); showView("app"); render(); }
