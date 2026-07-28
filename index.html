@@ -651,7 +651,6 @@ function railHTML(){const t=totals();const band=project.band/100;
     <h2 class="t" style="font-size:14px;text-transform:uppercase;letter-spacing:1px;color:var(--accent2)">Live budget</h2>
     <div class="romband"><div class="big">${money(t.total)}</div>
       <div class="rng">Budget range ±${project.band}% · ${money(t.total*(1-band))} – ${money(t.total*(1+band))}</div>
-      <div style="margin-top:8px"><span class="pill ${investLevel(t.total).cls}">${investLevel(t.total).name}</span> <span class="note">${investLevel(t.total).blurb}</span></div>
       ${project.homeSF>0?`<div class="note" style="margin-top:6px">${money(t.total/project.homeSF)} / SF</div>`:''}</div>
     <div class="sumline tot"><span>Total Budget</span><span>${money(t.total)}</span></div>
     <div class="note" style="margin-top:10px">${selected.size} systems · ${allRooms().length} rooms · all-in (equipment, labor, tax &amp; freight)</div></div></div>`;
