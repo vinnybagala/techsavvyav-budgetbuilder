@@ -368,7 +368,7 @@ const TIERCLASS={Good:"g",Better:"b",Best:"p"};
 
 /* ============================================================ STATE ============================================================ */
 let step=0, guest=false;
-const project={name:"New Residence",client:"",gc:"",arch:"",zip:"",band:20,cont:12,tax:8.625,freight:2,homeSF:0};
+const project={name:"New Residence",client:"",gc:"",arch:"",zip:"",band:5,cont:12,tax:8.625,freight:2,homeSF:0};
 let rid=1, fid=1, bid=1;
 let structure=[];
 let selected=new Set();
@@ -631,22 +631,15 @@ function railHTML(){const t=totals();const band=project.band/100;
       <div class="rng">Budget range ±${project.band}% · ${money(t.total*(1-band))} – ${money(t.total*(1+band))}</div>
       <div style="margin-top:8px"><span class="pill ${investLevel(t.total).cls}">${investLevel(t.total).name}</span> <span class="note">${investLevel(t.total).blurb}</span></div>
       ${project.homeSF>0?`<div class="note" style="margin-top:6px">${money(t.total/project.homeSF)} / SF</div>`:''}</div>
-    <div class="sumline"><span class="l">Systems (direct)</span><span>${money(t.direct)}</span></div>
-    <div class="sumline"><span class="l">Contingency ${project.cont}%</span><span>${money(t.cont)}</span></div>
-    <div class="sumline"><span class="l">Sales tax ${project.tax}%</span><span>${money(t.tax)}</span></div>
-    <div class="sumline"><span class="l">Freight ${project.freight}%</span><span>${money(t.freight)}</span></div>
     <div class="sumline tot"><span>Total Budget</span><span>${money(t.total)}</span></div>
-    <div class="note" style="margin-top:10px">${selected.size} systems · ${allRooms().length} rooms</div></div></div>`;
+    <div class="note" style="margin-top:10px">${selected.size} systems · ${allRooms().length} rooms · all-in (equipment, labor, tax &amp; freight)</div></div></div>`;
 }
 
 /* STEP 4 */
 function screenReport(){
   const t=totals();const band=project.band/100;const rooms=allRooms();
   let h=`<div class="card no-print"><h2 class="t">Budget Report</h2>
-    <p class="hint">Project info, ZIP/tax, and square footage are set on the Project step. Adjust the range width below if you want a tighter or wider band, then export.</p>
-    <div class="row3">
-      <div class="field"><label>Budget band ±% (range width)</label><input type="number" value="${project.band}" onchange="setP('band',this.value)"></div>
-      <div></div><div></div></div>
+    <p class="hint">Project info, ZIP/tax, and square footage are set on the Project step. Review the report below, then export.</p>
     <button class="btn primary mini" onclick="window.print()">⬇ Export / Print PDF</button></div>`;
 
   h+=`<div class="card">
@@ -803,13 +796,14 @@ function serialize(){return {structure,selected:[...selected],assign,sysAnswers,
 function hydrate(d){
   structure=d.structure||[]; selected=new Set(d.selected||[]); assign=d.assign||{}; sysAnswers=d.sysAnswers||{}; sfTier=d.sfTier||{};
   Object.assign(project,d.project||{});
+  project.band=5; // fixed planning band
   if(d.ids){rid=d.ids.rid||1;fid=d.ids.fid||1;bid=d.ids.bid||1;}
   rebuildAssign();
 }
 function freshState(){
   rid=1;fid=1;bid=1; structure=[{id:bid++,name:"Main House",floors:[{id:fid++,name:"Main Level",rooms:[]}]}];
   selected=new Set(["network","control","audio","video","lighting"]); assign={}; sysAnswers={}; sfTier={network:"Better"};
-  Object.assign(project,{name:"New Residence",client:"",gc:"",arch:"",zip:"",band:20,cont:12,tax:8.625,freight:2,homeSF:0});
+  Object.assign(project,{name:"New Residence",client:"",gc:"",arch:"",zip:"",band:5,cont:12,tax:8.625,freight:2,homeSF:0});
   rebuildAssign(); guest=false; step=0; currentBudgetId=null;
 }
 function newBudget(){ freshState(); showView("app"); render(); }
