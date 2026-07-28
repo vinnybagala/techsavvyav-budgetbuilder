@@ -677,7 +677,6 @@ function screenReport(){
       <div><div class="lbl">Estimated Project Investment</div>
         <div class="rng">${money(t.total*(1-band))} – ${money(t.total*(1+band))}</div>
         <div class="meta">Midpoint ${money(t.total)} · ±${project.band}% planning range${project.homeSF>0?` · ${money(t.total/project.homeSF)}/SF across ${Number(project.homeSF).toLocaleString()} SF`:''}</div></div>
-      <div style="text-align:right"><span class="pill ${investLevel(t.total).cls}">${investLevel(t.total).name} tier</span></div>
     </div>
     <div class="rsec">Systems included</div>`;
 
