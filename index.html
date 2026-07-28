@@ -390,7 +390,7 @@ const TIERCLASS={Good:"g",Better:"b",Best:"p"};
 
 /* ============================================================ STATE ============================================================ */
 let step=0, guest=false;
-const project={name:"New Residence",client:"",gc:"",arch:"",zip:"",band:5,cont:12,tax:8.625,freight:2,homeSF:0};
+const project={name:"New Residence",client:"",gc:"",arch:"",zip:"",band:3,cont:12,tax:8.625,freight:2,homeSF:0};
 let rid=1, fid=1, bid=1;
 let structure=[];
 let selected=new Set();
@@ -820,14 +820,14 @@ function serialize(){return {structure,selected:[...selected],assign,sysAnswers,
 function hydrate(d){
   structure=d.structure||[]; selected=new Set(d.selected||[]); assign=d.assign||{}; sysAnswers=d.sysAnswers||{}; sfTier=d.sfTier||{};
   Object.assign(project,d.project||{});
-  project.band=5; // fixed planning band
+  project.band=3; // fixed planning band
   if(d.ids){rid=d.ids.rid||1;fid=d.ids.fid||1;bid=d.ids.bid||1;}
   rebuildAssign();
 }
 function freshState(){
   rid=1;fid=1;bid=1; structure=[{id:bid++,name:"Main House",floors:[{id:fid++,name:"Main Level",rooms:[]}]}];
   selected=new Set(["network","control","audio","video","lighting"]); assign={}; sysAnswers={}; sfTier={network:"Better"};
-  Object.assign(project,{name:"New Residence",client:"",gc:"",arch:"",zip:"",band:5,cont:12,tax:8.625,freight:2,homeSF:0});
+  Object.assign(project,{name:"New Residence",client:"",gc:"",arch:"",zip:"",band:3,cont:12,tax:8.625,freight:2,homeSF:0});
   rebuildAssign(); guest=false; step=0; currentBudgetId=null;
 }
 function newBudget(){ freshState(); showView("app"); render(); }
