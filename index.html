@@ -630,7 +630,11 @@ function screenConfigure(){
         ${S.flat?`<div class="tierpick" style="display:flex;align-items:center;color:var(--muted);font-size:12px">Standard · ${money(S.tiers.Good.price)}/${S.unit}</div>`:
         `<select class="tierpick" ${a.on?'':'disabled'} onchange="setTier('${k}',${r.id},this.value)">
           ${TIERS.map(t=>`<option ${a.tier===t?'selected':''}>${t} · ${money(S.tiers[t].price)}/${S.unit}</option>`).join("")}</select>`}
-        <input class="qtybox" type="number" min="1" value="${a.qty||1}" ${a.on?'':'disabled'} onchange="setQty('${k}',${r.id},this.value)" title="Qty of ${S.unit}s">
+        ${S.spkPerZone?
+          `<select class="qtybox" ${a.on?'':'disabled'} onchange="setSpk('${k}',${r.id},this.value)" title="Speakers in room">
+            ${[2,4,6,8].map(n=>`<option value="${n}" ${((a.qty||1)*S.spkPerZone===n)?'selected':''}>${n} spk</option>`).join("")}</select>`
+          :
+          `<input class="qtybox" type="number" min="1" value="${a.qty||1}" ${a.on?'':'disabled'} onchange="setQty('${k}',${r.id},this.value)" title="Qty of ${S.unit}s">`}
         <div class="rowline">${a.on?money(S.tiers[a.tier].price*(a.qty||1)):'—'}</div></div>`;});
     if(S.headend)h+=`<div class="assignrow"><div><b>Head-end / infrastructure</b><div class="loc">${S.headend.label}</div></div><div></div><div></div><div class="rowline">${money(headendPrice(k))}</div></div>`;
     h+=`</div></div>`;});
@@ -643,6 +647,7 @@ function toggleRoom(k,id){assign[k][id].on=!assign[k][id].on;render();}
 function setTier(k,id,v){assign[k][id].tier=v.split(" · ")[0];render();}
 function setSfTier(k,t){sfTier[k]=t;render();}
 function setQty(k,id,v){assign[k][id].qty=Math.max(1,parseInt(v)||1);render();}
+function setSpk(k,id,v){const S=SYSTEMS[k];const per=S.spkPerZone||2;const spk=Math.max(per,parseInt(v)||per);assign[k][id].qty=Math.max(1,Math.round(spk/per));render();}
 function setAll(k,t){allRooms().forEach(r=>{if(assign[k][r.id].on)assign[k][r.id].tier=t;});render();}
 function allOn(k,v){allRooms().forEach(r=>assign[k][r.id].on=v);render();}
 
