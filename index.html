@@ -408,6 +408,7 @@ function rebuildAssign(){
    Home Control now scales naturally via per-interface pricing, so head-ends are fixed. */
 function headendPrice(k){const S=SYSTEMS[k];if(!S||!S.headend)return 0;return S.headend.price;}
 function homeSFval(){return Math.max(0,parseFloat(project.homeSF)||0);}
+function psfTag(cost){const sf=homeSFval();return sf>0?' · $'+(cost/sf).toFixed(2)+'/SF':'';}
 function systemRoomCost(k){const S=SYSTEMS[k];
   if(S.basis==='sf'){const t=sfTier[k]||'Better';return (S.tiers[t]?S.tiers[t].price:0)*homeSFval();}
   let sum=0,anyOn=false;
@@ -504,7 +505,7 @@ function screenConfigure(){
       <button class="qbtn p" onclick="setWholeHome('Best')">Best</button></div></div>`;
   Array.from(selected).forEach(k=>{const S=SYSTEMS[k];const cost=systemRoomCost(k);
     if(S.basis==='sf'){const sf=homeSFval();const t=sfTier[k]||'Better';
-      h+=`<div class="cfg"><div class="hd"><span class="ico">${S.ico}</span><span class="nm">${S.name}</span><span class="sub">${money(cost)}</span></div>
+      h+=`<div class="cfg"><div class="hd"><span class="ico">${S.ico}</span><span class="nm">${S.name}</span><span class="sub">${money(cost)}<span style="color:var(--muted);font-weight:600">${psfTag(cost)}</span></span></div>
         <div class="bd">
           <div class="field" style="max-width:280px"><label>Home size (square feet)</label>
             <input type="number" min="0" value="${project.homeSF||''}" placeholder="e.g. 5000" onchange="setP('homeSF',this.value)"></div>
@@ -520,7 +521,7 @@ function screenConfigure(){
           <div class="assignrow"><div><b>${sf?sf.toLocaleString():'—'} SF</b> × $${S.tiers[t].price}/SF<div class="loc">${t} grade${sf?'':' — enter home size above'}</div></div><div></div><div></div><div class="rowline">${money(cost)}</div></div>
         </div></div>`;
       return;}
-    h+=`<div class="cfg"><div class="hd"><span class="ico">${S.ico}</span><span class="nm">${S.name}</span><span class="sub">${money(cost)}</span></div>
+    h+=`<div class="cfg"><div class="hd"><span class="ico">${S.ico}</span><span class="nm">${S.name}</span><span class="sub">${money(cost)}<span style="color:var(--muted);font-weight:600">${psfTag(cost)}</span></span></div>
       <div class="bd"><div class="tierlegend">${S.flat?
         `<span><b class="pill b">Standard</b> ${S.tiers.Good.mean} · ${money(S.tiers.Good.price)}/${S.unit}</span>`:
         `<span><b class="pill g">Good</b> ${S.tiers.Good.mean}</span>
@@ -605,7 +606,7 @@ function screenReport(){
 
   Array.from(selected).forEach(k=>{const S=SYSTEMS[k];const cost=systemRoomCost(k);if(cost===0)return;
     const lo=systemSpanCost(k,'Good'),hi=systemSpanCost(k,'Best');
-    h+=`<div class="rsys"><div class="hd"><span>${S.ico}</span><span class="nm">${S.name}</span><span class="amt">${money(cost)}</span></div>
+    h+=`<div class="rsys"><div class="hd"><span>${S.ico}</span><span class="nm">${S.name}</span><span class="amt">${money(cost)}${homeSFval()>0?`<span style="display:block;font-size:11px;font-weight:600;color:var(--muted)">${psfTag(cost).replace(' · ','')}</span>`:''}</span></div>
       <div class="desc">${S.blurb}${sysDesc(k)}${lo!==hi?`<div class="note" style="margin-top:6px">Across quality levels (Good → Best): ${money(lo)} – ${money(hi)}</div>`:''}</div>`;
     if(S.basis==='sf'){const t=sfTier[k]||'Better';
       h+=`<table><thead><tr><th>Basis</th><th>Grade</th><th class="n">Home SF</th><th class="n">$/SF</th><th class="n">Budget</th></tr></thead><tbody>
@@ -626,8 +627,22 @@ function screenReport(){
   h+=`<tr><td>Contingency (${project.cont}%)</td><td class="n">${money(t.cont)}</td></tr>
     <tr><td>Sales tax (${project.tax}% on equipment)</td><td class="n">${money(t.tax)}</td></tr>
     <tr><td>Freight (${project.freight}% on equipment)</td><td class="n">${money(t.freight)}</td></tr>`;
-  h+=`<tr><td style="font-size:17px"><b style="color:var(--ink)">Total Budget</b></td><td class="n" style="font-size:17px"><b style="color:var(--accent2)">${money(t.total)}</b></td></tr></tbody></table>
-    <p class="note" style="margin-top:14px">This is a professional-grade planning budget, not a proposal. The range reflects design maturity at this early stage — it narrows as scope is finalized, it does not mean the scope is uncertain. Figures cover fully-installed, integrated systems (equipment, wiring, programming, and labor), not retail hardware. Unit pricing is calibrated from Tech Savvy proposal data (starting point — refines as more jobs are added). Prepared ${today()}.</p></div>
+  h+=`<tr><td style="font-size:17px"><b style="color:var(--ink)">Total Budget</b></td><td class="n" style="font-size:17px"><b style="color:var(--accent2)">${money(t.total)}</b></td></tr></tbody></table>`;
+
+  // $/SF cross-check — sanity check budget against home square footage
+  const sf=homeSFval();
+  if(sf>0){
+    h+=`<div style="margin-top:22px"><div class="note" style="letter-spacing:.5px;font-weight:700;color:var(--ink);margin-bottom:6px">$/SF CROSS-CHECK</div>
+      <div class="note" style="margin-bottom:8px">A second lens on the same budget: cost per square foot of home (${sf.toLocaleString()} SF), system by system. Useful for gut-checking the estimate against past jobs.</div>
+      <table><thead><tr><th>System</th><th class="n">Budget</th><th class="n">$/SF</th></tr></thead><tbody>`;
+    Array.from(selected).forEach(k=>{const S=SYSTEMS[k];const cost=systemRoomCost(k);if(cost===0)return;
+      h+=`<tr><td style="color:var(--ink);font-weight:600">${S.ico} ${S.name}</td><td class="n">${money(cost)}</td><td class="n">$${(cost/sf).toFixed(2)}</td></tr>`;});
+    h+=`<tr><td><b style="color:var(--ink)">All systems (direct)</b></td><td class="n"><b style="color:var(--ink)">${money(t.direct)}</b></td><td class="n"><b style="color:var(--ink)">$${(t.direct/sf).toFixed(2)}</b></td></tr>
+      <tr><td><b style="color:var(--accent2)">Total budget (incl. contingency, tax, freight)</b></td><td class="n"><b style="color:var(--accent2)">${money(t.total)}</b></td><td class="n"><b style="color:var(--accent2)">$${(t.total/sf).toFixed(2)}</b></td></tr>
+      </tbody></table></div>`;
+  }
+
+  h+=`<p class="note" style="margin-top:14px">This is a professional-grade planning budget, not a proposal. The range reflects design maturity at this early stage — it narrows as scope is finalized, it does not mean the scope is uncertain. Figures cover fully-installed, integrated systems (equipment, wiring, programming, and labor), not retail hardware. Unit pricing is calibrated from Tech Savvy proposal data (starting point — refines as more jobs are added). Prepared ${today()}.</p></div>
     <div class="navbtns no-print"><button class="btn ghost" onclick="back()">← Back to configure</button><span></span></div>`;
   $("screen").innerHTML=h;
 }
