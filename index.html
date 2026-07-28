@@ -345,7 +345,7 @@ const ROOM_TYPES=["Great Room","Living Room","Family Room","Kitchen","Dining Roo
    OPEN ITEMS: HVAC ($15k estate) & prewire-per-SF not yet modeled as systems. */
 const SYSTEMS={
   network:{name:"Network & Structured Wiring",ico:"🌐",unit:"SF",basis:"sf",
-    blurb:"The wired foundation the whole home runs on — full standard Cat6/6A structured cabling in every home, plus managed switching, firewall, and business-class WiFi. Access-point count and drops scale with the home's size, so it's priced per square foot (rack and head-end included). Every home is wired to the same standard; the tier only sets the network gear.",
+    blurb:"The wired foundation the whole home runs on — full standard Cat6/6A structured cabling in every home, with managed switching and Wi-Fi sized to the home. Access-point count and drops scale with the home's size, so it's priced per square foot (rack included). Every home is wired to the same standard; the tier sets the network gear — business-class Wi-Fi with a dedicated firewall comes in at the Better and Best levels.",
     headend:null,
     tiers:{Good:{price:6,mean:"Value / mesh WiFi (Eero)"},Better:{price:8,mean:"Enterprise Wi-Fi + managed switching"},Best:{price:10,mean:"Enterprise + firewall + redundancy / multi-building"}},
     q:[]},
@@ -354,11 +354,11 @@ const SYSTEMS={
     headend:{label:"Control processor & system programming",price:9000},
     tiers:{Good:{price:1000,mean:"Handheld remote / keypad (Control4, URC)"},Better:{price:1600,mean:"In-wall touchscreen (Savant / Control4)"},Best:{price:2800,mean:"Crestron / premium touch interface"}},
     q:[{k:"platform",label:"Control platform",opts:["Control4","Savant","Crestron","URC","Best fit"]}]},
-  audio:{name:"Multi-Room Audio",ico:"🔊",unit:"zone",
+  audio:{name:"Multi-Room Audio",ico:"🔊",unit:"zone",spkPerZone:2,
     blurb:"Streaming audio to architectural speakers throughout the home and outdoors — independent volume and sources by room, controlled from keypad, touchscreen, app, or voice.",
     headend:{label:"Streaming sources & multi-zone amplification",price:8000},
     tiers:{Good:{price:3000,mean:"Standard in-ceiling speakers (Sonance VX)"},Better:{price:9500,mean:"Invisible or small-aperture speakers"},Best:{price:14000,mean:"Invisible / small-aperture + subwoofer"}},
-    q:[{k:"out",label:"Outdoor zones?",opts:["None","1–2 (patio / deck)","3+"]}]},
+    q:[]},
   video:{name:"Video & TV",ico:"📺",unit:"TV",
     blurb:"Televisions and dedicated media rooms — displays mounted or concealed, shared sources, and surround sound, all wired and calibrated. From a single TV to a full theater.",
     headend:{label:"Video matrix & AV distribution rack",price:4500},
@@ -687,12 +687,11 @@ function screenReport(){
       h+=`<div class="sfrow"><span><span class="pill ${TIERCLASS[tg]}">${tg}</span> <span class="note">${S.tiers[tg].mean}</span></span>
         <span class="note">${homeSFval().toLocaleString()} SF × $${S.tiers[tg].price}/SF</span></div></div>`;return;}
     const incl=rooms.filter(r=>assign[k][r.id]&&assign[k][r.id].on);
-    h+=`<table><thead><tr><th>Room</th><th>Location</th><th>Quality</th><th class="n">Qty</th><th class="n">Budget</th></tr></thead><tbody>`;
-    incl.forEach(r=>{const a=assign[k][r.id];const tc=TIERCLASS[a.tier];
-      h+=`<tr><td style="color:var(--ink);font-weight:600">${esc(r.name)}</td><td class="note">${esc(r.floor)}</td>
+    h+=`<table><thead><tr><th>Room</th><th>Location</th><th>Quality</th><th class="n">Qty</th></tr></thead><tbody>`;
+    incl.forEach(r=>{const a=assign[k][r.id];const tc=TIERCLASS[a.tier];const q=(a.qty||1)*(S.spkPerZone||1);
+      h+=`<tr><td class="rm">${esc(r.name)}</td><td class="note">${esc(r.floor)}</td>
         <td><span class="pill ${S.flat?'b':tc}">${S.flat?'Standard':a.tier}</span> <span class="note">${S.tiers[a.tier].mean}</span></td>
-        <td class="n">${a.qty||1}</td><td class="n">${money(S.tiers[a.tier].price*(a.qty||1))}</td></tr>`;});
-    if(S.headend)h+=`<tr><td>Head-end</td><td class="note">Infrastructure</td><td class="note">${S.headend.label}</td><td class="n">1</td><td class="n">${money(headendPrice(k))}</td></tr>`;
+        <td class="n">${q}</td></tr>`;});
     h+=`</tbody></table></div>`;});
 
   h+=`<div class="rtot"><span class="l">Total Estimated Budget</span>
