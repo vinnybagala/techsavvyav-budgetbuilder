@@ -352,10 +352,11 @@ const SYSTEMS={
   control:{name:"Home Control System",ico:"🎛️",unit:"interface",
     blurb:"The processor and programming that unify every system into one experience — operated from handheld remotes, in-wall touchscreens, and the app. Control4, Savant, Crestron, or URC.",
     headend:{label:"Control processor & system programming",price:9000},
-    tiers:{Good:{price:1000,mean:"Handheld remote / keypad (Control4, URC)"},Better:{price:1600,mean:"In-wall touchscreen (Savant / Control4)"},Best:{price:2800,mean:"Crestron / premium touch interface"}},
-    q:[{k:"platform",label:"Control platform",opts:["Control4","Savant","Crestron","URC","Best fit"]}]},
-  audio:{name:"Multi-Room Audio",ico:"🔊",unit:"zone",spkPerZone:2,
-    blurb:"Streaming audio to architectural speakers throughout the home and outdoors — independent volume and sources by room, controlled from keypad, touchscreen, app, or voice.",
+    tiers:{Good:{price:1000,mean:"Handheld remote / keypad (Control4, URC)"},Better:{price:1600,mean:"iPad dock or in-wall touchscreen (Savant / Control4)"},Best:{price:2800,mean:"Crestron / premium touch interface"}},
+    q:[{k:"platform",label:"Control platform",opts:["Control4","Savant","Crestron","URC","Best fit"]},
+       {k:"proc",label:"Central processor?",opts:["Yes — Savant / Control4 / Crestron host","No — iPad docks / app only (no processor)"]}]},
+  audio:{name:"Multi-Room Audio",ico:"🔊",unit:"zone",spkPerZone:2,prewire:300,
+    blurb:"Streaming audio to architectural speakers throughout the home and outdoors — independent volume and sources by room, controlled from keypad, touchscreen, app, or voice. Rooms can also be set to pre-wire only (speaker wire roughed in, no speakers).",
     headend:{label:"Streaming sources & multi-zone amplification",price:8000},
     tiers:{Good:{price:3000,mean:"Standard in-ceiling speakers (Sonance VX)"},Better:{price:9500,mean:"Invisible or small-aperture speakers"},Best:{price:14000,mean:"Invisible / small-aperture + subwoofer"}},
     q:[]},
@@ -380,9 +381,10 @@ const SYSTEMS={
     tiers:{Good:{price:850,mean:"1080p / battery (Ring)"},Better:{price:1900,mean:"4K fixed IP (UniFi Protect)"},Best:{price:2800,mean:"8MP varifocal / PTZ / gate runs"}},
     q:[]},
   access:{name:"Entry & Access",ico:"🚪",unit:"entry",flat:true,
-    blurb:"Video intercom entry, smart locks, and gate or driveway integration — see and speak to anyone at the door or gate, and control who gets in.",
+    types:[{k:"entry",label:"Entry / intercom station",price:2750},{k:"chime",label:"Chime (wired)",price:450}],
+    blurb:"Video intercom entry, smart locks, and gate or driveway integration — see and speak to anyone at the door or gate, and control who gets in. Wired door chimes can be added per location.",
     headend:{label:"Access controller & integration",price:1500},
-    tiers:{Good:{price:2750,mean:"DoorBird station (per entry)"},Better:{price:2750,mean:"DoorBird station (per entry)"},Best:{price:2750,mean:"DoorBird station (per entry)"}},
+    tiers:{Good:{price:2750,mean:"DoorBird / intercom station (per entry)"},Better:{price:2750,mean:"DoorBird / intercom station (per entry)"},Best:{price:2750,mean:"DoorBird / intercom station (per entry)"}},
     q:[]},
 };
 const TIERS=["Good","Better","Best"];
@@ -428,18 +430,25 @@ function rebuildAssign(){
 }
 /* head-end (infrastructure) cost per system — a flat per-project figure added when the system has any rooms.
    Home Control now scales naturally via per-interface pricing, so head-ends are fixed. */
-function headendPrice(k){const S=SYSTEMS[k];if(!S||!S.headend)return 0;return S.headend.price;}
+function headendPrice(k){const S=SYSTEMS[k];if(!S||!S.headend)return 0;
+  if(k==='control'){const a=sysAnswers.control;if(a&&/^No/.test(a.proc||''))return 0;} // iPad docks / app only — no processor
+  return S.headend.price;}
 function homeSFval(){return Math.max(0,parseFloat(project.homeSF)||0);}
 function psfTag(cost){const sf=homeSFval();return sf>0?' · $'+(cost/sf).toFixed(2)+'/SF':'';}
+function accessType(S,a){if(!S.types)return null;return S.types.find(x=>x.k===(a&&a.kind||S.types[0].k))||S.types[0];}
+function roomUnitCost(k,a,tier){const S=SYSTEMS[k];
+  if(a.pw&&S.prewire)return S.prewire;                       // pre-wire only (speaker wire, no gear)
+  if(S.types){const t=accessType(S,a);return t.price*(a.qty||1);}  // typed flat system (entry vs chime)
+  return S.tiers[tier||a.tier].price*(a.qty||1);}
 function systemRoomCost(k){const S=SYSTEMS[k];
   if(S.basis==='sf'){const t=sfTier[k]||'Better';return (S.tiers[t]?S.tiers[t].price:0)*homeSFval();}
   let sum=0,anyOn=false;
-  allRooms().forEach(r=>{const a=assign[k]&&assign[k][r.id];if(a&&a.on){anyOn=true;sum+=S.tiers[a.tier].price*(a.qty||1);}});
+  allRooms().forEach(r=>{const a=assign[k]&&assign[k][r.id];if(a&&a.on){anyOn=true;sum+=roomUnitCost(k,a);}});
   if(anyOn&&S.headend)sum+=headendPrice(k);return sum;}
 function systemSpanCost(k,tier){const S=SYSTEMS[k];
   if(S.basis==='sf'){return (S.tiers[tier]?S.tiers[tier].price:0)*homeSFval();}
   let sum=0,anyOn=false;
-  allRooms().forEach(r=>{const a=assign[k]&&assign[k][r.id];if(a&&a.on){anyOn=true;sum+=S.tiers[tier].price*(a.qty||1);}});
+  allRooms().forEach(r=>{const a=assign[k]&&assign[k][r.id];if(a&&a.on){anyOn=true;sum+=roomUnitCost(k,a,tier);}});
   if(anyOn&&S.headend)sum+=headendPrice(k);return sum;}
 function directTotal(){let s=0;selected.forEach(k=>s+=systemRoomCost(k));return s;}
 /* investment positioning (placeholder bands — edit to taste) */
@@ -627,16 +636,21 @@ function screenConfigure(){
       h+=`<div class="assignrow ${a.on?'':'off'}">
         <div style="display:flex;align-items:center;gap:12px"><div class="toggle ${a.on?'on':''}" onclick="toggleRoom('${k}',${r.id})"></div>
           <div><b>${esc(r.name)}</b><div class="loc">${esc(r.bldg)} · ${esc(r.floor)}</div></div></div>
-        ${S.flat?`<div class="tierpick" style="display:flex;align-items:center;color:var(--muted);font-size:12px">Standard · ${money(S.tiers.Good.price)}/${S.unit}</div>`:
+        ${S.flat?
+          (S.types?`<select class="tierpick" ${a.on?'':'disabled'} onchange="setKind('${k}',${r.id},this.value)">
+            ${S.types.map(tp=>`<option value="${tp.k}" ${((a.kind||S.types[0].k)===tp.k)?'selected':''}>${tp.label} · ${money(tp.price)}</option>`).join("")}</select>`
+          :`<div class="tierpick" style="display:flex;align-items:center;color:var(--muted);font-size:12px">Standard · ${money(S.tiers.Good.price)}/${S.unit}</div>`)
+        :
         `<select class="tierpick" ${a.on?'':'disabled'} onchange="setTier('${k}',${r.id},this.value)">
           ${TIERS.map(t=>`<option ${a.tier===t?'selected':''}>${t} · ${money(S.tiers[t].price)}/${S.unit}</option>`).join("")}</select>`}
         ${S.spkPerZone?
           `<select class="qtybox" ${a.on?'':'disabled'} onchange="setSpk('${k}',${r.id},this.value)" title="Speakers in room">
-            ${[2,4,6,8].map(n=>`<option value="${n}" ${((a.qty||1)*S.spkPerZone===n)?'selected':''}>${n} spk</option>`).join("")}</select>`
+            <option value="pw" ${a.pw?'selected':''}>Pre-wire</option>
+            ${[2,4,6,8].map(n=>`<option value="${n}" ${(!a.pw&&(a.qty||1)*S.spkPerZone===n)?'selected':''}>${n} spk</option>`).join("")}</select>`
           :
           `<input class="qtybox" type="number" min="1" value="${a.qty||1}" ${a.on?'':'disabled'} onchange="setQty('${k}',${r.id},this.value)" title="Qty of ${S.unit}s">`}
-        <div class="rowline">${a.on?money(S.tiers[a.tier].price*(a.qty||1)):'—'}</div></div>`;});
-    if(S.headend)h+=`<div class="assignrow"><div><b>Head-end / infrastructure</b><div class="loc">${S.headend.label}</div></div><div></div><div></div><div class="rowline">${money(headendPrice(k))}</div></div>`;
+        <div class="rowline">${a.on?money(roomUnitCost(k,a)):'—'}</div></div>`;});
+    if(S.headend&&headendPrice(k)>0)h+=`<div class="assignrow"><div><b>Head-end / infrastructure</b><div class="loc">${S.headend.label}</div></div><div></div><div></div><div class="rowline">${money(headendPrice(k))}</div></div>`;
     h+=`</div></div>`;});
   h+=`<div class="navbtns"><button class="btn ghost" onclick="back()">← Back</button><button class="btn primary" onclick="next()">See the report →</button></div></div>`;
   h+=railHTML();h+=`</div>`;
@@ -647,7 +661,11 @@ function toggleRoom(k,id){assign[k][id].on=!assign[k][id].on;render();}
 function setTier(k,id,v){assign[k][id].tier=v.split(" · ")[0];render();}
 function setSfTier(k,t){sfTier[k]=t;render();}
 function setQty(k,id,v){assign[k][id].qty=Math.max(1,parseInt(v)||1);render();}
-function setSpk(k,id,v){const S=SYSTEMS[k];const per=S.spkPerZone||2;const spk=Math.max(per,parseInt(v)||per);assign[k][id].qty=Math.max(1,Math.round(spk/per));render();}
+function setSpk(k,id,v){const S=SYSTEMS[k];const a=assign[k][id];
+  if(v==='pw'){a.pw=true;}
+  else{a.pw=false;const per=S.spkPerZone||2;const spk=Math.max(per,parseInt(v)||per);a.qty=Math.max(1,Math.round(spk/per));}
+  render();}
+function setKind(k,id,v){assign[k][id].kind=v;render();}
 function setAll(k,t){allRooms().forEach(r=>{if(assign[k][r.id].on)assign[k][r.id].tier=t;});render();}
 function allOn(k,v){allRooms().forEach(r=>assign[k][r.id].on=v);render();}
 
@@ -693,10 +711,14 @@ function screenReport(){
         <span class="note">${homeSFval().toLocaleString()} SF × $${S.tiers[tg].price}/SF</span></div></div>`;return;}
     const incl=rooms.filter(r=>assign[k][r.id]&&assign[k][r.id].on);
     h+=`<table><thead><tr><th>Room</th><th>Location</th><th>Quality</th><th class="n">Qty</th></tr></thead><tbody>`;
-    incl.forEach(r=>{const a=assign[k][r.id];const tc=TIERCLASS[a.tier];const q=(a.qty||1)*(S.spkPerZone||1);
+    incl.forEach(r=>{const a=assign[k][r.id];let qLabel,qClass,qNote,qty;
+      if(a.pw&&S.prewire){qLabel='Pre-wire';qClass='g';qNote='Speaker wire roughed-in';qty='—';}
+      else if(S.types){const t=accessType(S,a);qLabel=t.label;qClass='b';qNote='';qty=a.qty||1;}
+      else if(S.flat){qLabel='Standard';qClass='b';qNote=S.tiers[a.tier].mean;qty=a.qty||1;}
+      else {qLabel=a.tier;qClass=TIERCLASS[a.tier];qNote=S.tiers[a.tier].mean;qty=(a.qty||1)*(S.spkPerZone||1);}
       h+=`<tr><td class="rm">${esc(r.name)}</td><td class="note">${esc(r.floor)}</td>
-        <td><span class="pill ${S.flat?'b':tc}">${S.flat?'Standard':a.tier}</span> <span class="note">${S.tiers[a.tier].mean}</span></td>
-        <td class="n">${q}</td></tr>`;});
+        <td><span class="pill ${qClass}">${qLabel}</span>${qNote?` <span class="note">${qNote}</span>`:''}</td>
+        <td class="n">${qty}</td></tr>`;});
     h+=`</tbody></table></div>`;});
 
   h+=`<div class="rtot"><span class="l">Total Estimated Budget</span>
