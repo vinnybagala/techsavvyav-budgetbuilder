@@ -360,8 +360,8 @@ const SYSTEMS={
     headend:{label:"Streaming sources & multi-zone amplification",price:8000},
     tiers:{Good:{price:3000,mean:"Standard in-ceiling speakers (Sonance VX)"},Better:{price:9500,mean:"Invisible or small-aperture speakers"},Best:{price:14000,mean:"Invisible / small-aperture + subwoofer"}},
     q:[]},
-  video:{name:"Video & TV",ico:"📺",unit:"TV",
-    blurb:"Televisions and dedicated media rooms — displays mounted or concealed, shared sources, and surround sound, all wired and calibrated. From a single TV to a full theater.",
+  video:{name:"Video & TV",ico:"📺",unit:"TV",prewire:550,
+    blurb:"Televisions and dedicated media rooms — displays mounted or concealed, shared sources, and surround sound, all wired and calibrated. From a single TV to a full theater. Rooms can also be set to pre-wire only (TV/AV drop roughed in, no display).",
     headend:{label:"Video matrix & AV distribution rack",price:4500},
     tiers:{Good:{price:4000,mean:"Display + mount + source"},Better:{price:11000,mean:"Display + premium soundbar + sub"},Best:{price:22000,mean:"Frame display + full surround + sub"}},
     q:[{k:"display",label:"Display style",opts:["Standard mount","Recessed / concealed","The Frame / art-mode","Projector + screen"]}]},
@@ -381,7 +381,7 @@ const SYSTEMS={
     tiers:{Good:{price:850,mean:"1080p / battery (Ring)"},Better:{price:1900,mean:"4K fixed IP (UniFi Protect)"},Best:{price:2800,mean:"8MP varifocal / PTZ / gate runs"}},
     q:[]},
   access:{name:"Entry & Access",ico:"🚪",unit:"entry",flat:true,
-    types:[{k:"entry",label:"Entry / intercom station",price:2750},{k:"chime",label:"Chime (wired)",price:450}],
+    types:[{k:"entry",label:"Entry / intercom station",price:2750},{k:"interior",label:"Interior station",price:1400},{k:"chime",label:"Chime (wired)",price:450}],
     blurb:"Video intercom entry, smart locks, and gate or driveway integration — see and speak to anyone at the door or gate, and control who gets in. Wired door chimes can be added per location.",
     headend:{label:"Access controller & integration",price:1500},
     tiers:{Good:{price:2750,mean:"DoorBird / intercom station (per entry)"},Better:{price:2750,mean:"DoorBird / intercom station (per entry)"},Best:{price:2750,mean:"DoorBird / intercom station (per entry)"}},
@@ -642,7 +642,8 @@ function screenConfigure(){
           :`<div class="tierpick" style="display:flex;align-items:center;color:var(--muted);font-size:12px">Standard · ${money(S.tiers.Good.price)}/${S.unit}</div>`)
         :
         `<select class="tierpick" ${a.on?'':'disabled'} onchange="setTier('${k}',${r.id},this.value)">
-          ${TIERS.map(t=>`<option ${a.tier===t?'selected':''}>${t} · ${money(S.tiers[t].price)}/${S.unit}</option>`).join("")}</select>`}
+          ${(S.prewire&&!S.spkPerZone)?`<option ${a.pw?'selected':''}>Pre-wire · ${money(S.prewire)}</option>`:''}
+          ${TIERS.map(t=>`<option ${(!a.pw&&a.tier===t)?'selected':''}>${t} · ${money(S.tiers[t].price)}/${S.unit}</option>`).join("")}</select>`}
         ${S.spkPerZone?
           `<select class="qtybox" ${a.on?'':'disabled'} onchange="setSpk('${k}',${r.id},this.value)" title="Speakers in room">
             <option value="pw" ${a.pw?'selected':''}>Pre-wire</option>
@@ -658,7 +659,9 @@ function screenConfigure(){
 }
 function setAns(k,q,v){if(!sysAnswers[k])sysAnswers[k]={};sysAnswers[k][q]=v;}
 function toggleRoom(k,id){assign[k][id].on=!assign[k][id].on;render();}
-function setTier(k,id,v){assign[k][id].tier=v.split(" · ")[0];render();}
+function setTier(k,id,v){const t=v.split(" · ")[0];const a=assign[k][id];
+  if(t==='Pre-wire'){a.pw=true;}else{a.pw=false;a.tier=t;}
+  render();}
 function setSfTier(k,t){sfTier[k]=t;render();}
 function setQty(k,id,v){assign[k][id].qty=Math.max(1,parseInt(v)||1);render();}
 function setSpk(k,id,v){const S=SYSTEMS[k];const a=assign[k][id];
