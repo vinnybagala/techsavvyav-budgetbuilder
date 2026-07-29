@@ -348,7 +348,7 @@ const SYSTEMS={
     blurb:"The wired foundation the whole home runs on — full standard Cat6/6A structured cabling in every home, with managed switching and Wi-Fi sized to the home. Access-point count and drops scale with the home's size, so it's priced per square foot (rack included). Every home is wired to the same standard; the tier sets the network gear — business-class Wi-Fi with a dedicated firewall comes in at the Better and Best levels.",
     headend:null,
     tiers:{Good:{price:6,mean:"Value / mesh WiFi (Eero)"},Better:{price:8,mean:"Enterprise Wi-Fi + managed switching"},Best:{price:10,mean:"Enterprise + firewall + redundancy / multi-building"}},
-    q:[]},
+    q:[{k:"rack",label:"Equipment rack",opts:["Standard (included)","Large multi-bay (+$6,000)","Enterprise rack + UPS (+$12,000)"]}]},
   control:{name:"Home Control System",ico:"🎛️",unit:"interface",
     blurb:"The processor and programming that unify every system into one experience — operated from handheld remotes, in-wall touchscreens, and the app. Control4, Savant, Crestron, or URC.",
     headend:{label:"Control processor & system programming",price:9000},
@@ -363,7 +363,7 @@ const SYSTEMS={
   video:{name:"Video & TV",ico:"📺",unit:"TV",prewire:550,
     blurb:"Televisions and dedicated media rooms — displays mounted or concealed, shared sources, and surround sound, all wired and calibrated. From a single TV to a full theater. Rooms can also be set to pre-wire only (TV/AV drop roughed in, no display).",
     headend:{label:"Video matrix & AV distribution rack",price:4500},
-    tiers:{Good:{price:4000,mean:"Display + mount + source"},Better:{price:11000,mean:"Display + premium soundbar + sub"},Best:{price:22000,mean:"Frame display + full surround + sub"}},
+    tiers:{Good:{price:4000,mean:"Display + mount + source (audio from a zone)"},Better:{price:6500,mean:"Display + soundbar + sub (e.g. Sonos Arc)"},Best:{price:22000,mean:"Media room — full surround + sub / theater"}},
     q:[{k:"display",label:"Display style",opts:["Standard mount","Recessed / concealed","The Frame / art-mode","Projector + screen"]}]},
   lighting:{name:"Lighting Control",ico:"💡",unit:"keypad",
     blurb:"Programmable lighting with elegant keypads and dimmers in place of cluttered switch banks — everyday scenes plus whole-home 'goodnight' and 'away.' Priced per keypad. Better is standard wired keypads (See-Touch); Best is premium wired (Palladiom). Ultra-custom keypads (Forbes & Lomax / Ketra) run above Best — bump the tier or note manually.",
@@ -440,13 +440,17 @@ function roomUnitCost(k,a,tier){const S=SYSTEMS[k];
   if(a.pw&&S.prewire)return S.prewire;                       // pre-wire only (speaker wire, no gear)
   if(S.types){const t=accessType(S,a);return t.price*(a.qty||1);}  // typed flat system (entry vs chime)
   return S.tiers[tier||a.tier].price*(a.qty||1);}
+function rackAdder(k){if(k!=='network')return 0;const a=sysAnswers.network;if(!a)return 0;
+  if(/Enterprise/.test(a.rack||''))return 12000;
+  if(/Large/.test(a.rack||''))return 6000;
+  return 0;}
 function systemRoomCost(k){const S=SYSTEMS[k];
-  if(S.basis==='sf'){const t=sfTier[k]||'Better';return (S.tiers[t]?S.tiers[t].price:0)*homeSFval();}
+  if(S.basis==='sf'){const t=sfTier[k]||'Better';return (S.tiers[t]?S.tiers[t].price:0)*homeSFval()+rackAdder(k);}
   let sum=0,anyOn=false;
   allRooms().forEach(r=>{const a=assign[k]&&assign[k][r.id];if(a&&a.on){anyOn=true;sum+=roomUnitCost(k,a);}});
   if(anyOn&&S.headend)sum+=headendPrice(k);return sum;}
 function systemSpanCost(k,tier){const S=SYSTEMS[k];
-  if(S.basis==='sf'){return (S.tiers[tier]?S.tiers[tier].price:0)*homeSFval();}
+  if(S.basis==='sf'){return (S.tiers[tier]?S.tiers[tier].price:0)*homeSFval()+rackAdder(k);}
   let sum=0,anyOn=false;
   allRooms().forEach(r=>{const a=assign[k]&&assign[k][r.id];if(a&&a.on){anyOn=true;sum+=roomUnitCost(k,a,tier);}});
   if(anyOn&&S.headend)sum+=headendPrice(k);return sum;}
@@ -709,9 +713,11 @@ function screenReport(){
     const lo=systemSpanCost(k,'Good'),hi=systemSpanCost(k,'Best');
     h+=`<div class="rsys"><div class="hd"><span class="ic">${S.ico}</span><span class="nm">${S.name}</span><span class="amt">${money(cost)}${homeSFval()>0?`<span class="psf">$${(cost/homeSFval()).toFixed(2)}/SF</span>`:''}</span></div>
       <div class="desc">${S.blurb}${sysDesc(k)}</div>`;
-    if(S.basis==='sf'){const tg=sfTier[k]||'Better';
+    if(S.basis==='sf'){const tg=sfTier[k]||'Better';const rk=rackAdder(k);
       h+=`<div class="sfrow"><span><span class="pill ${TIERCLASS[tg]}">${tg}</span> <span class="note">${S.tiers[tg].mean}</span></span>
-        <span class="note">${homeSFval().toLocaleString()} SF × $${S.tiers[tg].price}/SF</span></div></div>`;return;}
+        <span class="note">${homeSFval().toLocaleString()} SF × $${S.tiers[tg].price}/SF</span></div>`;
+      if(rk>0)h+=`<div class="sfrow"><span class="note">Equipment rack</span><span class="note">+${money(rk)}</span></div>`;
+      h+=`</div>`;return;}
     const incl=rooms.filter(r=>assign[k][r.id]&&assign[k][r.id].on);
     h+=`<table><thead><tr><th>Room</th><th>Location</th><th>Quality</th><th class="n">Qty</th></tr></thead><tbody>`;
     incl.forEach(r=>{const a=assign[k][r.id];let qLabel,qClass,qNote,qty;
