@@ -254,6 +254,7 @@
   .sbadge{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:999px}
   .sbadge.shared{background:rgba(46,180,120,.16);color:#7fd4a8;border:1px solid rgba(46,180,120,.4)}
   .sbadge.out{background:rgba(226,180,95,.14);color:#e9c880;border:1px solid rgba(226,180,95,.35)}
+  .sbadge.role{background:rgba(56,152,219,.16);color:var(--accent2);border:1px solid rgba(56,152,219,.4)}
   .sharerow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
   .bcard .acts{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
   .bcard .acts .btn{padding:5px 9px;font-size:11.5px}
@@ -830,7 +831,7 @@ async function showDash(){
   showView("dashboard");
   const isAdmin=meProfile.role==="admin";
   $("dash_title").textContent = isAdmin ? "All budgets" : meProfile.firm_name+" — budgets";
-  $("dash_sub").textContent = isAdmin ? "Every firm's budgets, grouped by who created them. You have full access." : "Your team's budgets, plus anything Tech Savvy has shared with you.";
+  $("dash_sub").textContent = isAdmin ? "Every firm's budgets, grouped by who created them. You have full access." : "Your team's budgets, projects where you're the GC or architect, plus anything Tech Savvy has shared with you.";
   $("bgrid").innerHTML=`<div class="emptybox">Loading…</div>`;
   const {data:{user}}=await sb.auth.getUser(); const uid=user.id;
   const {data:budgets,error}=await sb.from("budgets").select("id,name,client,gc,total,updated_at,owner,owner_firm").order("updated_at",{ascending:false});
@@ -839,12 +840,21 @@ async function showDash(){
   const {data:shares}=await sb.from("budget_shares").select("budget_id,firm_id,firm_name");
   const sharedToMe=new Set(); const sharesBy={};
   (shares||[]).forEach(s=>{ if(s.firm_id===uid) sharedToMe.add(s.budget_id); (sharesBy[s.budget_id]=sharesBy[s.budget_id]||[]).push(s.firm_name); });
+  let firmNames=new Set();
+  if(isAdmin){ const {data:profs}=await sb.from("profiles").select("firm_name").eq("role","firm"); (profs||[]).forEach(p=>firmNames.add((p.firm_name||"").trim().toLowerCase())); }
+  const myFirm=(meProfile.firm_name||"").trim().toLowerCase();
   let list=budgets.slice();
   if(isAdmin) list.sort((a,b)=>(a.owner_firm||"").localeCompare(b.owner_firm||"")||(a.updated_at<b.updated_at?1:-1));
   $("bgrid").innerHTML=list.map(b=>{
     const mine=b.owner===uid; const shareNames=sharesBy[b.id]||[]; const creator=b.owner_firm||"";
+    const gcMatch=!!myFirm&&(b.gc||"").trim().toLowerCase()===myFirm;
     let badges="";
-    if(sharedToMe.has(b.id)) badges+=`<span class="sbadge shared">Shared with you</span>`;
+    if(!isAdmin&&!mine){
+      if(sharedToMe.has(b.id)) badges+=`<span class="sbadge shared">Shared with you</span>`;
+      else if(gcMatch) badges+=`<span class="sbadge role">You're the GC</span>`;
+      else badges+=`<span class="sbadge role">You're the architect</span>`;
+    }
+    if(isAdmin&&b.gc&&firmNames.has((b.gc||"").trim().toLowerCase())) badges+=`<span class="sbadge role">GC ${esc(b.gc)} has access</span>`;
     if((mine||isAdmin)&&shareNames.length) badges+=`<span class="sbadge out">Shared → ${shareNames.map(esc).join(", ")}</span>`;
     return `<div class="bcard" onclick="openBudget('${b.id}')">
     <div class="nm">${esc(b.name||"Untitled")}</div>
