@@ -527,6 +527,26 @@ function onZip(v){
   if(t){project.tax=t.r;project._taxArea=t.a;project._taxGuess=!!t.guess;}
   render();
 }
+/* GC / Architect firm picker (native dropdown + "Other" for custom names) */
+let _otherFlags={};
+function firmField(field,label,placeholder){
+  const val=(project[field]||"").trim();
+  const names=(FIRMS||[]).map(f=>f.firm_name);
+  const matched=names.find(n=>n.toLowerCase()===val.toLowerCase());
+  const other=!!_otherFlags[field] || (val && !matched);
+  let opts=`<option value="">— Select ${esc(label)} —</option>`;
+  opts+=names.map(n=>`<option value="${esc(n)}" ${(!other&&n===matched)?'selected':''}>${esc(n)}</option>`).join("");
+  opts+=`<option value="__other__" ${other?'selected':''}>Other (type a name)…</option>`;
+  let h=`<div class="field"><label>${esc(label)}</label>
+    <select onchange="onFirmSelect('${field}',this.value)">${opts}</select>`;
+  if(other) h+=`<input style="margin-top:6px" value="${esc(project[field]||'')}" placeholder="${esc(placeholder)}" onchange="setP('${field}',this.value)">`;
+  return h+`</div>`;
+}
+function onFirmSelect(field,v){
+  if(v==='__other__'){ _otherFlags[field]=true; }
+  else { _otherFlags[field]=false; project[field]=v; }
+  render();
+}
 
 /* STEP 1 — PROJECT DETAILS */
 function screenProject(){
@@ -541,10 +561,9 @@ function screenProject(){
     <div class="row3">
       <div class="field"><label>Project name</label><input value="${esc(project.name)}" placeholder="e.g. 123 Main St Residence" onchange="setP('name',this.value)"></div>
       <div class="field"><label>Client</label><input value="${esc(project.client)}" placeholder="Homeowner name" onchange="setP('client',this.value)"></div>
-      <div class="field"><label>General Contractor</label><input value="${esc(project.gc)}" list="firmlist" placeholder="Select or type a GC" onchange="setP('gc',this.value)"></div></div>
-    <datalist id="firmlist">${FIRMS.map(f=>`<option value="${esc(f.firm_name)}">${esc(f.firm_type||'')}</option>`).join("")}</datalist>
+      ${firmField('gc','General Contractor','Type a GC name')}</div>
     <div class="row3">
-      <div class="field"><label>Architect</label><input value="${esc(project.arch)}" list="firmlist" placeholder="Select or type an architect" onchange="setP('arch',this.value)"></div>
+      ${firmField('arch','Architect','Type an architect name')}
       <div class="field"><label>Project ZIP code <span style="color:var(--accent2)">*</span></label><input inputmode="numeric" maxlength="5" value="${esc(project.zip)}" placeholder="e.g. 94118" onchange="onZip(this.value)"></div>
       <div class="field"><label>Project square footage <span style="color:var(--accent2)">*</span></label><input type="number" min="0" value="${project.homeSF||''}" placeholder="e.g. 7,100" onchange="setP('homeSF',this.value)"></div></div>
     <div class="row3">
@@ -907,6 +926,7 @@ function hydrate(d){
   structure=d.structure||[]; selected=new Set(d.selected||[]); assign=d.assign||{}; sysAnswers=d.sysAnswers||{}; sfTier=d.sfTier||{};
   Object.assign(project,d.project||{});
   project.band=3; project.cont=0; // fixed planning band; contingency removed (tool reads to actual)
+  delete project._ot_gc; delete project._ot_arch; _otherFlags={};
   if(d.ids){rid=d.ids.rid||1;fid=d.ids.fid||1;bid=d.ids.bid||1;}
   rebuildAssign();
 }
@@ -914,7 +934,7 @@ function freshState(){
   rid=1;fid=1;bid=1; structure=[{id:bid++,name:"Main House",floors:[{id:fid++,name:"Main Level",rooms:[]}]}];
   selected=new Set(["network","control","audio","video","lighting"]); assign={}; sysAnswers={}; sfTier={network:"Better"};
   Object.assign(project,{name:"New Residence",client:"",gc:"",arch:"",zip:"",band:3,cont:0,tax:8.625,freight:2,homeSF:0});
-  rebuildAssign(); guest=false; step=0; currentBudgetId=null;
+  rebuildAssign(); guest=false; step=0; currentBudgetId=null; _otherFlags={};
 }
 function newBudget(){ freshState(); showView("app"); render(); }
 async function openBudget(id){
