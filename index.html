@@ -534,18 +534,42 @@ function firmField(field,label,placeholder){
   const names=(FIRMS||[]).map(f=>f.firm_name);
   const matched=names.find(n=>n.toLowerCase()===val.toLowerCase());
   const other=!!_otherFlags[field] || (val && !matched);
+  const canAdd = meProfile && meProfile.role==='admin';
   let opts=`<option value="">— Select ${esc(label)} —</option>`;
   opts+=names.map(n=>`<option value="${esc(n)}" ${(!other&&n===matched)?'selected':''}>${esc(n)}</option>`).join("");
   opts+=`<option value="__other__" ${other?'selected':''}>Other (type a name)…</option>`;
+  if(canAdd) opts+=`<option value="__addnew__">➕ Add new firm…</option>`;
   let h=`<div class="field"><label>${esc(label)}</label>
     <select onchange="onFirmSelect('${field}',this.value)">${opts}</select>`;
   if(other) h+=`<input style="margin-top:6px" value="${esc(project[field]||'')}" placeholder="${esc(placeholder)}" onchange="setP('${field}',this.value)">`;
   return h+`</div>`;
 }
 function onFirmSelect(field,v){
+  if(v==='__addnew__'){ openAddFirmForField(field); return; }
   if(v==='__other__'){ _otherFlags[field]=true; }
   else { _otherFlags[field]=false; project[field]=v; }
   render();
+}
+function openAddFirmForField(field){
+  const type = field==='arch' ? 'Architect' : 'GC';
+  modalHTML(`<h3>Add a new firm</h3>
+    <p class="hint" style="margin-top:-4px">Creates a login and adds them to the list. They'll be set as the ${field==='arch'?'architect':'GC'} on this budget, giving them access.</p>
+    <div class="field"><label>Firm name</label><input id="nf_name" placeholder="Acme Builders"></div>
+    <div class="row"><div class="field"><label>Type</label><select id="nf_type"><option ${type==='GC'?'selected':''}>GC</option><option ${type==='Architect'?'selected':''}>Architect</option><option>Other</option></select></div>
+      <div class="field"><label>Login email</label><input id="nf_email" type="email" placeholder="admin@firm.com"></div></div>
+    <div class="field"><label>Temporary password</label><input id="nf_pw" value="Budgetbuilder2026!"></div>
+    <div class="autherr" id="nf_err"></div>
+    <div class="navbtns"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" id="nf_btn" onclick="submitAddFirmForField('${field}')">Create &amp; assign</button></div>`);
+}
+async function submitAddFirmForField(field){
+  const firm_name=$("nf_name").value.trim(), firm_type=$("nf_type").value, email=$("nf_email").value.trim(), password=$("nf_pw").value;
+  if(!firm_name||!email||!password){$("nf_err").textContent="Firm name, email and password are required.";$("nf_err").className="autherr show";return;}
+  $("nf_btn").disabled=true;$("nf_btn").textContent="Creating…";
+  const {data,error}=await sb.functions.invoke("firm-admin",{body:{action:"create_firm",firm_name,firm_type,email,password}});
+  if(error||data?.error){$("nf_err").textContent=data?.error||error.message;$("nf_err").className="autherr show";$("nf_btn").disabled=false;$("nf_btn").innerHTML="Create &amp; assign";return;}
+  try{ const {data:fd}=await sb.from("firm_directory").select("firm_name,firm_type").order("firm_name"); FIRMS=fd||[]; }catch(e){}
+  project[field]=firm_name; _otherFlags[field]=false;
+  closeModal(); toast("Firm created & assigned"); render();
 }
 
 /* STEP 1 — PROJECT DETAILS */
