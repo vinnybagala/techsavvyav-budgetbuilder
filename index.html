@@ -537,13 +537,14 @@ function screenProject(){
   else if(t.guess) taxNote=`ZIP is outside our usual area — please verify this rate.`;
   else taxNote=`Auto-filled for <b>${t.a}</b> — editable if a specific tax district differs.`;
   let h=`<div class="card"><h2 class="t">Project details <span class="accentdot">.</span></h2>
-    <p class="hint">A few basics to anchor the budget. ZIP sets the local sales-tax rate; square footage drives the whole estimate — both are required before we can price anything.</p>
+    <p class="hint">A few basics to anchor the budget. ZIP sets the local sales-tax rate; square footage drives the whole estimate — both are required before we can price anything. Picking a GC or architect that has a Tech Savvy login gives that firm access to this budget from their own dashboard.</p>
     <div class="row3">
       <div class="field"><label>Project name</label><input value="${esc(project.name)}" placeholder="e.g. 123 Main St Residence" onchange="setP('name',this.value)"></div>
       <div class="field"><label>Client</label><input value="${esc(project.client)}" placeholder="Homeowner name" onchange="setP('client',this.value)"></div>
-      <div class="field"><label>General Contractor</label><input value="${esc(project.gc)}" placeholder="Builder / GC" onchange="setP('gc',this.value)"></div></div>
+      <div class="field"><label>General Contractor</label><input value="${esc(project.gc)}" list="firmlist" placeholder="Select or type a GC" onchange="setP('gc',this.value)"></div></div>
+    <datalist id="firmlist">${FIRMS.map(f=>`<option value="${esc(f.firm_name)}">${esc(f.firm_type||'')}</option>`).join("")}</datalist>
     <div class="row3">
-      <div class="field"><label>Architect</label><input value="${esc(project.arch)}" placeholder="Architecture firm" onchange="setP('arch',this.value)"></div>
+      <div class="field"><label>Architect</label><input value="${esc(project.arch)}" list="firmlist" placeholder="Select or type an architect" onchange="setP('arch',this.value)"></div>
       <div class="field"><label>Project ZIP code <span style="color:var(--accent2)">*</span></label><input inputmode="numeric" maxlength="5" value="${esc(project.zip)}" placeholder="e.g. 94118" onchange="onZip(this.value)"></div>
       <div class="field"><label>Project square footage <span style="color:var(--accent2)">*</span></label><input type="number" min="0" value="${project.homeSF||''}" placeholder="e.g. 7,100" onchange="setP('homeSF',this.value)"></div></div>
     <div class="row3">
@@ -777,7 +778,7 @@ function toggleGuest(){guest=!guest;{const g=$("gbtn");if(g)g.textContent=guest?
 /* ============================================================ CLOUD / AUTH APP SHELL ============================================================ */
 const SB_URL="https://vqrgfwruqepuuvbmhnsm.supabase.co";
 const SB_KEY="sb_publishable_trKltlvCA8SKHjpHJtCHJw_X87WjteR";
-let sb=null, meProfile=null, currentBudgetId=null;
+let sb=null, meProfile=null, currentBudgetId=null, FIRMS=[];
 
 function toast(msg,isErr){const t=$("toast");t.textContent=msg;t.className="toast show"+(isErr?" err":"");setTimeout(()=>t.className="toast",2600);}
 function showView(v){
@@ -812,6 +813,7 @@ async function afterLogin(){
   meProfile=await loadMyProfile();
   if(!meProfile||!meProfile.active){ await sb.auth.signOut(); showAuthErr("This account is not active. Contact Tech Savvy."); showView("auth"); return; }
   $("dash_admin").style.display = meProfile.role==="admin" ? "" : "none";
+  try{ const {data}=await sb.from("firm_directory").select("firm_name,firm_type").order("firm_name"); FIRMS=data||[]; }catch(e){ FIRMS=[]; }
   await showDash();
 }
 function showAuthErr(m){const e=$("li_err");e.textContent=m;e.className="autherr show";}
