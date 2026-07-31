@@ -251,6 +251,10 @@
   .bcard .meta{font-size:12px;color:var(--muted)}
   .bcard .amt{font-size:20px;font-weight:800;color:var(--accent2);margin-top:10px;font-variant-numeric:tabular-nums}
   .bcard .firmtag{display:inline-block;font-size:10.5px;font-weight:700;background:rgba(56,152,219,.15);color:var(--accent2);border:1px solid rgba(56,152,219,.35);padding:1px 8px;border-radius:999px;margin-top:8px}
+  .sbadge{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:999px}
+  .sbadge.shared{background:rgba(46,180,120,.16);color:#7fd4a8;border:1px solid rgba(46,180,120,.4)}
+  .sbadge.out{background:rgba(226,180,95,.14);color:#e9c880;border:1px solid rgba(226,180,95,.35)}
+  .sharerow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
   .bcard .acts{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
   .bcard .acts .btn{padding:5px 9px;font-size:11.5px}
   .emptybox{border:1.5px dashed var(--line2);border-radius:14px;padding:40px 20px;text-align:center;color:var(--muted);grid-column:1/-1}
@@ -824,25 +828,64 @@ async function doLogout(){ await sb.auth.signOut(); meProfile=null; currentBudge
 /* ---------- dashboard ---------- */
 async function showDash(){
   showView("dashboard");
-  $("dash_title").textContent = meProfile.role==="admin" ? "All budgets" : meProfile.firm_name+" — budgets";
-  $("dash_sub").textContent = meProfile.role==="admin" ? "Every firm's budgets. You have full access." : "Shared across your team.";
+  const isAdmin=meProfile.role==="admin";
+  $("dash_title").textContent = isAdmin ? "All budgets" : meProfile.firm_name+" — budgets";
+  $("dash_sub").textContent = isAdmin ? "Every firm's budgets, grouped by who created them. You have full access." : "Your team's budgets, plus anything Tech Savvy has shared with you.";
   $("bgrid").innerHTML=`<div class="emptybox">Loading…</div>`;
-  const {data:budgets,error}=await sb.from("budgets").select("id,name,client,gc,total,updated_at,owner").order("updated_at",{ascending:false});
+  const {data:{user}}=await sb.auth.getUser(); const uid=user.id;
+  const {data:budgets,error}=await sb.from("budgets").select("id,name,client,gc,total,updated_at,owner,owner_firm").order("updated_at",{ascending:false});
   if(error){$("bgrid").innerHTML=`<div class="emptybox">Couldn't load budgets: ${esc(error.message)}</div>`;return;}
-  let firmMap={};
-  if(meProfile.role==="admin"){ const {data:profs}=await sb.from("profiles").select("id,firm_name"); (profs||[]).forEach(p=>firmMap[p.id]=p.firm_name); }
   if(!budgets||!budgets.length){ $("bgrid").innerHTML=`<div class="emptybox">No budgets yet. Click <b>+ New budget</b> to create your first one.</div>`; return; }
-  $("bgrid").innerHTML=budgets.map(b=>`<div class="bcard" onclick="openBudget('${b.id}')">
+  const {data:shares}=await sb.from("budget_shares").select("budget_id,firm_id,firm_name");
+  const sharedToMe=new Set(); const sharesBy={};
+  (shares||[]).forEach(s=>{ if(s.firm_id===uid) sharedToMe.add(s.budget_id); (sharesBy[s.budget_id]=sharesBy[s.budget_id]||[]).push(s.firm_name); });
+  let list=budgets.slice();
+  if(isAdmin) list.sort((a,b)=>(a.owner_firm||"").localeCompare(b.owner_firm||"")||(a.updated_at<b.updated_at?1:-1));
+  $("bgrid").innerHTML=list.map(b=>{
+    const mine=b.owner===uid; const shareNames=sharesBy[b.id]||[]; const creator=b.owner_firm||"";
+    let badges="";
+    if(sharedToMe.has(b.id)) badges+=`<span class="sbadge shared">Shared with you</span>`;
+    if((mine||isAdmin)&&shareNames.length) badges+=`<span class="sbadge out">Shared → ${shareNames.map(esc).join(", ")}</span>`;
+    return `<div class="bcard" onclick="openBudget('${b.id}')">
     <div class="nm">${esc(b.name||"Untitled")}</div>
     <div class="meta">${[b.client&&("Client: "+esc(b.client)),b.gc&&("GC: "+esc(b.gc))].filter(Boolean).join(" · ")||"—"}</div>
     <div class="amt">${money(b.total||0)}</div>
     <div class="meta" style="margin-top:2px">Updated ${fmtDate(b.updated_at)}</div>
-    ${meProfile.role==="admin"&&firmMap[b.owner]?`<div class="firmtag">${esc(firmMap[b.owner])}</div>`:""}
+    ${(isAdmin||!mine)&&creator?`<div class="firmtag">${esc(creator)}</div>`:""}
+    ${badges?`<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">${badges}</div>`:""}
     <div class="acts" onclick="event.stopPropagation()">
       <button class="btn ghost" onclick="openBudget('${b.id}')">Open</button>
+      ${isAdmin?`<button class="btn ghost" onclick="openShare('${b.id}','${esc((b.name||'').replace(/'/g,''))}')">Share</button>`:""}
       <button class="btn ghost" onclick="dupBudget('${b.id}')">Duplicate</button>
-      <button class="btn danger" onclick="delBudget('${b.id}','${esc((b.name||'').replace(/'/g,''))}')">Delete</button>
-    </div></div>`).join("");
+      ${(mine||isAdmin)?`<button class="btn danger" onclick="delBudget('${b.id}','${esc((b.name||'').replace(/'/g,''))}')">Delete</button>`:""}
+    </div></div>`;}).join("");
+}
+let _shareCtx={id:null,firms:{}};
+async function openShare(id,name){
+  modalHTML(`<h3>Share this budget</h3>
+    <p class="hint" style="margin-top:-4px">Give a partner firm access to open and edit <b>${esc(name)}</b> from their own dashboard. They can view and edit; only you or Tech Savvy can delete it.</p>
+    <div id="share_list"><div class="emptybox">Loading…</div></div>
+    <div class="navbtns"><span></span><button class="btn primary" onclick="closeModal()">Done</button></div>`);
+  const [fr,sh]=await Promise.all([
+    sb.from("profiles").select("id,firm_name,firm_type").eq("role","firm").order("firm_name"),
+    sb.from("budget_shares").select("firm_id").eq("budget_id",id)
+  ]);
+  const firms=fr.data||[]; const shared=new Set((sh.data||[]).map(s=>s.firm_id));
+  _shareCtx={id,firms:{}}; firms.forEach(f=>_shareCtx.firms[f.id]=f.firm_name);
+  if(!firms.length){$("share_list").innerHTML=`<div class="emptybox">No partner firms yet. Add one under <b>Manage firms</b>.</div>`;return;}
+  $("share_list").innerHTML=firms.map(f=>`<div class="sharerow">
+    <div><b style="color:var(--ink)">${esc(f.firm_name)}</b> <span class="note">${esc(f.firm_type||"")}</span></div>
+    <button class="btn ${shared.has(f.id)?'primary':'ghost'}" id="sh_${f.id}" data-on="${shared.has(f.id)?1:0}" onclick="toggleShare('${f.id}')">${shared.has(f.id)?'Shared ✓':'Share'}</button>
+  </div>`).join("");
+}
+async function toggleShare(fid){
+  const bid=_shareCtx.id; const btn=$("sh_"+fid); if(!btn)return; const on=btn.getAttribute("data-on")==="1";
+  btn.disabled=true;
+  if(on){ const {error}=await sb.from("budget_shares").delete().eq("budget_id",bid).eq("firm_id",fid); if(error){toast(error.message,true);btn.disabled=false;return;} }
+  else { const {data:{user}}=await sb.auth.getUser(); const {error}=await sb.from("budget_shares").insert({budget_id:bid,firm_id:fid,firm_name:_shareCtx.firms[fid]||null,shared_by:user.id}); if(error){toast(error.message,true);btn.disabled=false;return;} }
+  btn.disabled=false; btn.setAttribute("data-on",on?"0":"1");
+  btn.className="btn "+(on?"ghost":"primary"); btn.textContent=on?"Share":"Shared ✓";
+  toast(on?"Access removed":"Shared with partner");
 }
 function fmtDate(s){if(!s)return"";const d=new Date(s);return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});}
 
@@ -871,7 +914,7 @@ async function dupBudget(id){
   const {data}=await sb.from("budgets").select("*").eq("id",id).maybeSingle();
   if(!data)return;
   const {data:me}=await sb.auth.getUser();
-  const row={owner:me.user.id,name:(data.name||"Untitled")+" (copy)",client:data.client,gc:data.gc,total:data.total,data:data.data};
+  const row={owner:me.user.id,owner_firm:(meProfile&&meProfile.firm_name||null),name:(data.name||"Untitled")+" (copy)",client:data.client,gc:data.gc,total:data.total,data:data.data};
   const {error}=await sb.from("budgets").insert(row);
   if(error){toast("Duplicate failed",true);return;} toast("Budget duplicated"); showDash();
 }
@@ -885,9 +928,9 @@ function backToDash(){ showDash(); }
 async function saveBudget(){
   if(!sb){toast("Not connected",true);return;}
   const {data:{user}}=await sb.auth.getUser();
-  const row={owner:currentBudgetId?undefined:user.id,name:project.name||"Untitled Budget",client:project.client||"",gc:project.gc||"",total:Math.round(totals().total),data:serialize(),updated_at:new Date().toISOString()};
+  const row={owner:currentBudgetId?undefined:user.id,owner_firm:currentBudgetId?undefined:(meProfile&&meProfile.firm_name||null),name:project.name||"Untitled Budget",client:project.client||"",gc:project.gc||"",total:Math.round(totals().total),data:serialize(),updated_at:new Date().toISOString()};
   let res;
-  if(currentBudgetId){ delete row.owner; res=await sb.from("budgets").update(row).eq("id",currentBudgetId).select("id").maybeSingle(); }
+  if(currentBudgetId){ delete row.owner; delete row.owner_firm; res=await sb.from("budgets").update(row).eq("id",currentBudgetId).select("id").maybeSingle(); }
   else { res=await sb.from("budgets").insert(row).select("id").maybeSingle(); }
   if(res.error){toast("Save failed: "+res.error.message,true);return;}
   if(res.data) currentBudgetId=res.data.id;
