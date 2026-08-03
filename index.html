@@ -488,8 +488,10 @@ function goto(i){
 function next(){if(step<4){step++;render();window.scrollTo(0,0);}}
 function back(){if(step>0){step--;render();window.scrollTo(0,0);}}
 
+let _focusId=null;
 function render(){renderStepper();{const bd=$("badge");if(bd)bd.textContent=guest?"Guest · view + choices":"Internal";}
-  if(step===0)screenProject();else if(step===1)screenStructure();else if(step===2)screenSystems();else if(step===3)screenConfigure();else screenReport();}
+  if(step===0)screenProject();else if(step===1)screenStructure();else if(step===2)screenSystems();else if(step===3)screenConfigure();else screenReport();
+  if(_focusId){const el=$(_focusId); if(el){el.focus();} _focusId=null;}}
 
 /* ---- ZIP → sales tax (California, calibrated to Tech Savvy's footprint; always editable) ---- */
 function taxFromZip(zip){
@@ -619,11 +621,11 @@ function screenStructure(){
       f.rooms.forEach(r=>{h+=`<span class="roomchip">${esc(r.name)}<button class="x no-print" onclick="delR(${r.id})">×</button></span>`;});
       h+=`</div><div class="addroom no-print">
           <select id="rt_${f.id}">${ROOM_TYPES.map(t=>`<option>${t}</option>`).join("")}</select>
-          <input id="rn_${f.id}" placeholder="Custom name (optional)">
+          <input id="rn_${f.id}" placeholder="Custom name (optional)" onkeydown="if(event.key==='Enter'){event.preventDefault();addR(${f.id});}">
           <button class="btn primary mini" onclick="addR(${f.id})">+ Room</button></div></div>`;});
-    h+=`<div class="inlineadd no-print" style="margin-top:10px"><input id="fn_${b.id}" placeholder="New floor (e.g. Upper Level)">
+    h+=`<div class="inlineadd no-print" style="margin-top:10px"><input id="fn_${b.id}" placeholder="New floor (e.g. Upper Level)" onkeydown="if(event.key==='Enter'){event.preventDefault();addF(${b.id});}">
         <button class="btn ghost mini" onclick="addF(${b.id})">+ Floor</button></div></div>`;});
-  h+=`<div class="inlineadd no-print" style="margin-top:10px"><input id="newb" placeholder="New building (e.g. Guest House, Garage)">
+  h+=`<div class="inlineadd no-print" style="margin-top:10px"><input id="newb" placeholder="New building (e.g. Guest House, Garage)" onkeydown="if(event.key==='Enter'){event.preventDefault();addB();}">
       <button class="btn ghost mini" onclick="addB()">+ Building</button></div></div>
     <div class="navbtns"><button class="btn ghost" onclick="back()">← Back</button><button class="btn primary" onclick="next()">Next: choose systems →</button></div>`;
   $("screen").innerHTML=h;
@@ -806,13 +808,13 @@ function sysDesc(k){const a=sysAnswers[k];if(!a)return"";const p=Object.keys(a).
 /* structure mutations */
 function esc(s){return(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function today(){const d=new Date(2026,6,24);return d.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});}
-function addB(){const n=$("newb").value.trim()||("Building "+(structure.length+1));structure.push({id:bid++,name:n,floors:[{id:fid++,name:"Main Level",rooms:[]}]});render();}
+function addB(){const n=$("newb").value.trim()||("Building "+(structure.length+1));structure.push({id:bid++,name:n,floors:[{id:fid++,name:"Main Level",rooms:[]}]});_focusId="newb";render();}
 function delB(id){if(!confirm("Remove building and its rooms?"))return;structure=structure.filter(b=>b.id!==id);rebuildAssign();render();}
 function renameB(id,v){const b=structure.find(x=>x.id===id);if(b)b.name=v;}
-function addF(bid_){const b=structure.find(x=>x.id===bid_);const nm=$("fn_"+bid_).value.trim()||("Floor "+(b.floors.length+1));b.floors.push({id:fid++,name:nm,rooms:[]});render();}
+function addF(bid_){const b=structure.find(x=>x.id===bid_);const nm=$("fn_"+bid_).value.trim()||("Floor "+(b.floors.length+1));b.floors.push({id:fid++,name:nm,rooms:[]});_focusId="fn_"+bid_;render();}
 function delF(id){structure.forEach(b=>b.floors=b.floors.filter(f=>f.id!==id));rebuildAssign();render();}
 function renameF(id,v){structure.forEach(b=>b.floors.forEach(f=>{if(f.id===id)f.name=v;}));}
-function addR(fid_){structure.forEach(b=>b.floors.forEach(f=>{if(f.id===fid_){const type=$("rt_"+fid_).value;const name=$("rn_"+fid_).value.trim()||type;f.rooms.push({id:rid++,name:name,type:type});$("rn_"+fid_).value="";}}));rebuildAssign();render();}
+function addR(fid_){structure.forEach(b=>b.floors.forEach(f=>{if(f.id===fid_){const type=$("rt_"+fid_).value;const name=$("rn_"+fid_).value.trim()||type;f.rooms.push({id:rid++,name:name,type:type});$("rn_"+fid_).value="";}}));rebuildAssign();_focusId="rn_"+fid_;render();}
 function delR(id){structure.forEach(b=>b.floors.forEach(f=>f.rooms=f.rooms.filter(r=>r.id!==id)));rebuildAssign();render();}
 function setP(k,v){project[k]=(k==='name'||k==='client'||k==='gc'||k==='arch')?v:(parseFloat(v)||0);render();}
 
