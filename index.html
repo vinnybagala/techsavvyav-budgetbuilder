@@ -795,6 +795,7 @@ function screenReport(){
     Array.from(selected).forEach(k=>{const S=SYSTEMS[k];const cost=systemRoomCost(k);if(cost===0)return;
       h+=`<tr><td class="rm">${S.ico} ${S.name}</td><td class="n">${money(cost)}</td><td class="n">$${(cost/sf).toFixed(2)}</td></tr>`;});
     h+=`<tr><td><b class="rm">All systems (direct)</b></td><td class="n"><b class="rm">${money(t.direct)}</b></td><td class="n"><b class="rm">$${(t.direct/sf).toFixed(2)}</b></td></tr>
+      <tr><td class="rm" style="opacity:.75">+ Sales tax &amp; freight (buried in all-in)</td><td class="n" style="opacity:.75">${money(t.total-t.direct)}</td><td class="n" style="opacity:.75">$${((t.total-t.direct)/sf).toFixed(2)}</td></tr>
       <tr><td><b style="color:var(--accent2)">Total project budget (all-in)</b></td><td class="n"><b style="color:var(--accent2)">${money(t.total)}</b></td><td class="n"><b style="color:var(--accent2)">$${(t.total/sf).toFixed(2)}</b></td></tr>
       </tbody></table></div>`;
   }
