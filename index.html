@@ -790,8 +790,7 @@ function screenReport(){
   // $/SF cross-check — internal double-check, screen only (kept off the printed report)
   const sf=homeSFval();
   if(sf>0){
-    h+=`<div class="card no-print"><div class="rsec" style="margin-bottom:4px">$/SF cross-check · internal</div>
-      <div class="note" style="margin-bottom:11px">Cost per square foot (${sf.toLocaleString()} SF), system by system — for gut-checking against past jobs. This does not appear on the exported report.</div>
+    h+=`<div class="card no-print"><div class="rsec" style="margin-bottom:11px">$/SF cross-check · internal</div>
       <table><thead><tr><th>System</th><th class="n">Budget</th><th class="n">$/SF</th></tr></thead><tbody>`;
     Array.from(selected).forEach(k=>{const S=SYSTEMS[k];const cost=systemRoomCost(k);if(cost===0)return;
       h+=`<tr><td class="rm">${S.ico} ${S.name}</td><td class="n">${money(cost)}</td><td class="n">$${(cost/sf).toFixed(2)}</td></tr>`;});
