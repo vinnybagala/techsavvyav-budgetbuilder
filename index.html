@@ -350,23 +350,23 @@ const ROOM_TYPES=["Great Room","Living Room","Family Room","Kitchen","Dining Roo
    NOTE: labor ~68% of equipment typical (gear-dependent; Bunting's 46% is a likely low outlier, client-provided gear inflates it) — all-in rates already include it. Video head-end scales with # video rooms (control fix).
    OPEN ITEMS: HVAC ($15k estate) & prewire-per-SF not yet modeled as systems. */
 const SYSTEMS={
-  network:{name:"Network & Structured Wiring",ico:"🌐",unit:"SF",basis:"sf",
+  network:{name:"Network",ico:"🌐",unit:"SF",basis:"sf",
     blurb:"The wired foundation the whole home runs on — full standard Cat6/6A structured cabling in every home, with managed switching and Wi-Fi sized to the home. Access-point count and drops scale with the home's size, so it's priced per square foot (rack included). Every home is wired to the same standard; the tier sets the network gear — business-class Wi-Fi with a dedicated firewall comes in at the Better and Best levels.",
     headend:null,
     tiers:{Good:{price:6,mean:"Value / mesh WiFi (Eero)"},Better:{price:8,mean:"Enterprise Wi-Fi + managed switching"},Best:{price:10,mean:"Enterprise + firewall + redundancy / multi-building"}},
     q:[{k:"rack",label:"Equipment rack",opts:["Standard (included)","Large multi-bay (+$6,000)","Enterprise rack + UPS (+$12,000)"]}]},
-  control:{name:"Home Control System",ico:"🎛️",unit:"interface",
+  control:{name:"Control System",ico:"🎛️",unit:"interface",
     blurb:"The processor and programming that unify every system into one experience — operated from handheld remotes, in-wall touchscreens, and the app. Control4, Savant, Crestron, or URC.",
     headend:{label:"Control processor & system programming",price:9000},
     tiers:{Good:{price:1000,mean:"Handheld remote / keypad (Control4, URC)"},Better:{price:1800,mean:"iPad dock or in-wall touchscreen (Savant / Control4)"},Best:{price:2800,mean:"Crestron / premium touch interface"}},
     q:[{k:"platform",label:"Control platform",opts:["Control4","Savant","Crestron","URC","Best fit"]},
        {k:"proc",label:"Central processor?",opts:["Yes — Savant / Control4 / Crestron host","No — iPad docks / app only (no processor)"]}]},
-  audio:{name:"Multi-Room Audio",ico:"🔊",unit:"zone",spkPerZone:2,prewire:300,
+  audio:{name:"Whole House AV",ico:"🔊",unit:"zone",spkPerZone:2,prewire:300,
     blurb:"Streaming audio to architectural speakers throughout the home and outdoors — independent volume and sources by room, controlled from keypad, touchscreen, app, or voice. Rooms can also be set to pre-wire only (speaker wire roughed in, no speakers).",
     headend:{label:"Streaming sources & multi-zone amplification",price:8000},
     tiers:{Good:{price:4400,mean:"Standard in-ceiling speakers (Sonance VX)"},Better:{price:9500,mean:"Invisible or small-aperture speakers"},Best:{price:14000,mean:"Invisible / small-aperture + subwoofer"}},
     q:[]},
-  video:{name:"Video & TV",ico:"📺",unit:"TV",prewire:550,
+  video:{name:"Video",ico:"📺",unit:"TV",prewire:550,
     blurb:"Televisions and dedicated media rooms — displays mounted or concealed, shared sources, and surround sound, all wired and calibrated. From a single TV to a full theater. Rooms can also be set to pre-wire only (TV/AV drop roughed in, no display).",
     headend:{label:"Video matrix & AV distribution rack",price:6500},
     tiers:{Good:{price:4800,mean:"Display + mount + source (audio from a zone)"},Better:{price:7000,mean:"Display + soundbar + sub (e.g. Sonos Arc)"},Best:{price:22000,mean:"Media room — full surround + sub / theater"}},
@@ -376,17 +376,17 @@ const SYSTEMS={
     headend:null,
     tiers:{Good:{price:1100,mean:"Wireless dimmers (RA3 / Maestro / Control4)"},Better:{price:2300,mean:"HomeWorks wired — standard keypads (See-Touch)"},Best:{price:3400,mean:"HomeWorks wired — premium keypads (Palladiom)"}},
     q:[{k:"eco",label:"Platform",opts:["Lutron HomeWorks (wired)","Lutron RA3 (wireless)","Ketra"]}]},
-  shades:{name:"Motorized Shades & Curtains",ico:"🪟",unit:"opening",
+  shades:{name:"Shades",ico:"🪟",unit:"opening",
     blurb:"Automated shades, drapery, and curtains on scenes and schedules — managing daylight, glare, privacy, and heat. Better is standard exposed-roller shades; Best adds recessed pockets, which add cost. Count one opening per motorized shade — a room with two shades is qty 2.",
     headend:{label:"Lutron shade hub & integration",price:2500},
     tiers:{Good:{price:1600,mean:"Battery roller, standard fabric"},Better:{price:3200,mean:"Standard shades — hardwired roller / Roman, premium fabric"},Best:{price:6500,mean:"Recessed-pocket shades / drapery, custom"}},
     q:[]},
-  surveillance:{name:"Surveillance Cameras",ico:"📹",unit:"camera",
+  surveillance:{name:"Surveillance",ico:"📹",unit:"camera",
     blurb:"IP camera coverage with cloud recording and remote viewing — no local NVR — from residential cameras to 4K AI-verified security at entries, gates, and the perimeter.",
     headend:null,
     tiers:{Good:{price:850,mean:"1080p / battery, cloud (Ring)"},Better:{price:2400,mean:"4K cloud (Verkada / cloud-managed)"},Best:{price:3400,mean:"8MP varifocal / PTZ / gate runs, cloud"}},
     q:[]},
-  access:{name:"Entry & Access",ico:"🚪",unit:"entry",flat:true,
+  access:{name:"Access Control",ico:"🚪",unit:"entry",flat:true,
     types:[{k:"entry",label:"Entry / intercom station",price:4250},{k:"interior",label:"Interior station",price:1400},{k:"chime",label:"Chime (wired)",price:600}],
     blurb:"Video intercom entry, smart locks, and gate or driveway integration — see and speak to anyone at the door or gate, and control who gets in. Wired door chimes can be added per location.",
     headend:{label:"Access controller & integration",price:2200},
@@ -828,7 +828,7 @@ function railHTML(){const t=totals();const band=project.band/100;
 
 /* STEP 4 */
 /* ---------- D-Tools export (Phase 1: rooms & systems only) ---------- */
-const DT_SYS={network:"Network",control:"Control System",audio:"Whole House AV",video:"Video",lighting:"Lighting Control",shades:"Shades",surveillance:"Surveillance",access:"Access Control"};
+/* Budget Builder system names now match D-Tools system names 1:1, so we export S.name directly. */
 function dtCell(v){v=(v==null?"":String(v));return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
 function exportDtools(){
   const rooms=allRooms();
@@ -836,7 +836,7 @@ function exportDtools(){
   rooms.forEach(r=>{
     Array.from(selected).forEach(k=>{
       const a=assign[k]&&assign[k][r.id]; if(!a||!a.on)return;
-      lines.push([r.name, DT_SYS[k]||SYSTEMS[k].name].map(dtCell).join(","));
+      lines.push([r.name, SYSTEMS[k].name].map(dtCell).join(","));
       n++;
     });
   });
