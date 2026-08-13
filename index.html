@@ -827,11 +827,36 @@ function railHTML(){const t=totals();const band=project.band/100;
 }
 
 /* STEP 4 */
+/* ---------- D-Tools export (Phase 1: rooms & systems) ---------- */
+const DT_CAT={network:"Networking",control:"Control",audio:"Audio",video:"Video",lighting:"Lighting",shades:"Shades",surveillance:"Surveillance",access:"Access Control"};
+function dtCell(v){v=(v==null?"":String(v));return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function exportDtools(){
+  const rooms=allRooms();
+  const cols=["Location","System","Category","Manufacturer","Model","Description","Quantity","Unit Price","Phase"];
+  const lines=[cols.join(",")];let n=0;
+  rooms.forEach(r=>{
+    Array.from(selected).forEach(k=>{
+      const a=assign[k]&&assign[k][r.id]; if(!a||!a.on)return;
+      const S=SYSTEMS[k]; const pw=!!a.pw; const tier=pw?"Pre-wire":(a.tier||"Better"); const qty=a.qty||1;
+      const model=`${S.name} — ${tier}`+(pw?" (pre-wire)":"");
+      const desc=`Budget Builder placeholder — ${S.name}, ${tier} tier${pw?", pre-wire only":""}${r.floor?" ("+r.floor+")":""}`;
+      lines.push([r.name,S.name,DT_CAT[k]||"AV","Tech Savvy AV",model,desc,qty,0,"Proposal"].map(dtCell).join(","));
+      n++;
+    });
+  });
+  if(!n){toast("No room-level systems to export — assign systems to rooms first",true);return;}
+  const blob=new Blob([lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=url; a.download=(project.name||"Budget").replace(/[\\/:*?"<>|]/g,"-")+" - D-Tools rooms & systems.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),1500);
+  toast(n+" room-system lines exported");
+}
 function screenReport(){
   const t=totals();const band=project.band/100;const rooms=allRooms();
   let h=`<div class="card no-print"><h2 class="t">Budget Report</h2>
     <p class="hint">Project info, ZIP/tax, and square footage are set on the Project step. Review the report below, then export.</p>
-    <button class="btn primary mini" onclick="window.print()">⬇ Export / Print PDF</button></div>`;
+    <button class="btn primary mini" onclick="window.print()">⬇ Export / Print PDF</button>
+    <button class="btn ghost mini no-print" style="margin-left:8px" onclick="exportDtools()">⬇ D-Tools export (rooms &amp; systems)</button></div>`;
 
   h+=`<div class="card">
     <div class="repletter">
