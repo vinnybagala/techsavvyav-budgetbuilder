@@ -827,20 +827,16 @@ function railHTML(){const t=totals();const band=project.band/100;
 }
 
 /* STEP 4 */
-/* ---------- D-Tools export (Phase 1: rooms & systems) ---------- */
-const DT_CAT={network:"Networking",control:"Control",audio:"Audio",video:"Video",lighting:"Lighting",shades:"Shades",surveillance:"Surveillance",access:"Access Control"};
+/* ---------- D-Tools export (Phase 1: rooms & systems only) ---------- */
+const DT_SYS={network:"Network",control:"Control System",audio:"Whole House AV",video:"Video",lighting:"Lighting Control",shades:"Shades",surveillance:"Surveillance",access:"Access Control"};
 function dtCell(v){v=(v==null?"":String(v));return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
 function exportDtools(){
   const rooms=allRooms();
-  const cols=["Location","System","Category","Manufacturer","Model","Description","Quantity","Unit Price","Phase"];
-  const lines=[cols.join(",")];let n=0;
+  const lines=[["Location","System"].join(",")];let n=0;
   rooms.forEach(r=>{
     Array.from(selected).forEach(k=>{
       const a=assign[k]&&assign[k][r.id]; if(!a||!a.on)return;
-      const S=SYSTEMS[k]; const pw=!!a.pw; const tier=pw?"Pre-wire":(a.tier||"Better"); const qty=a.qty||1;
-      const model=`${S.name} — ${tier}`+(pw?" (pre-wire)":"");
-      const desc=`Budget Builder placeholder — ${S.name}, ${tier} tier${pw?", pre-wire only":""}${r.floor?" ("+r.floor+")":""}`;
-      lines.push([r.name,S.name,DT_CAT[k]||"AV","Tech Savvy AV",model,desc,qty,0,"Proposal"].map(dtCell).join(","));
+      lines.push([r.name, DT_SYS[k]||SYSTEMS[k].name].map(dtCell).join(","));
       n++;
     });
   });
