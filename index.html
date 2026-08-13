@@ -831,6 +831,7 @@ function railHTML(){const t=totals();const band=project.band/100;
 /* Budget Builder system names now match D-Tools system names 1:1, so we export S.name directly. */
 function dtCell(v){v=(v==null?"":String(v));return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
 function exportDtools(){
+  if(!(meProfile&&meProfile.role==='admin')){return;} // internal (Tech Savvy) only — not GCs/architects
   const rooms=allRooms();
   const lines=[["Location","System"].join(",")];let n=0;
   rooms.forEach(r=>{
@@ -852,7 +853,7 @@ function screenReport(){
   let h=`<div class="card no-print"><h2 class="t">Budget Report</h2>
     <p class="hint">Project info, ZIP/tax, and square footage are set on the Project step. Review the report below, then export.</p>
     <button class="btn primary mini" onclick="window.print()">⬇ Export / Print PDF</button>
-    <button class="btn ghost mini no-print" style="margin-left:8px" onclick="exportDtools()">⬇ D-Tools export (rooms &amp; systems)</button></div>`;
+    ${(meProfile&&meProfile.role==='admin'&&!guest)?`<button class="btn ghost mini no-print" style="margin-left:8px" onclick="exportDtools()">⬇ D-Tools export (rooms &amp; systems)</button>`:''}</div>`;
 
   h+=`<div class="card">
     <div class="repletter">
