@@ -607,7 +607,7 @@ function screenStructure(){
     <p class="hint">Start from plans, or add buildings, floors, and rooms by hand. Everything downstream attaches to these rooms.</p>
     <div class="drop no-print" onclick="document.getElementById('planfile').click()">
       <div style="font-size:28px">📄</div><b>Import rooms from plans (PDF)</b>
-      <div class="note" style="margin-top:4px">Upload a floor-plan PDF — the tool detects rooms by floor for you to check off.</div>
+      <div class="note" style="margin-top:4px">Upload a floor-plan PDF — the tool detects rooms by floor for you to check off. Always review every floor and room after importing and edit any name that's off.</div>
       <input id="planfile" type="file" accept="application/pdf,.pdf" class="hide" onchange="parsePlanFile(this)"></div>
     <div id="planmsg"></div><div class="or">then confirm / build rooms</div>`;
   structure.forEach(b=>{
@@ -683,8 +683,12 @@ function openRoomReview(rooms){
   const order=[],map={};
   rooms.forEach((r,i)=>{if(!(r.floor in map)){map[r.floor]=[];order.push(r.floor);}map[r.floor].push(i);});
   let h=`<h3>Rooms detected from plans</h3>
-    <p class="hint" style="margin-top:-4px">Found <b>${rooms.length}</b> rooms across ${order.length} floor${order.length!==1?"s":""}. Check the ones in scope and edit any name. Nothing is added until you confirm.</p>
-    <div style="max-height:56vh;overflow:auto;margin:6px 0 2px">`;
+    <p class="hint" style="margin-top:-4px">Found <b>${rooms.length}</b> rooms across ${order.length} floor${order.length!==1?"s":""}. Nothing is added until you confirm.</p>
+    <div class="banner" style="margin:2px 0 8px">⚠️ Detection isn't perfect — please review <b>every floor and room</b> carefully and edit any name that's off before adding.</div>
+    <div style="display:flex;gap:8px;margin-bottom:4px">
+      <button class="btn ghost mini no-print" onclick="planAllRooms(true)">✓ Check all rooms</button>
+      <button class="btn ghost mini no-print" onclick="planAllRooms(false)">Clear all</button></div>
+    <div style="max-height:50vh;overflow:auto;margin:2px 0">`;
   order.forEach(fl=>{
     h+=`<div style="display:flex;align-items:center;gap:8px;margin:12px 0 4px;border-bottom:1px solid var(--line,#e5e7eb);padding-bottom:4px">
         <b style="color:var(--accent2)">${esc(fl)}</b><span class="note">${map[fl].length} rooms</span>
@@ -701,6 +705,7 @@ function openRoomReview(rooms){
   modalHTML(h);
 }
 function planFloorAll(fl,on){_planRooms.forEach((r,i)=>{if(r.floor===fl){const c=$("pck_"+i);if(c)c.checked=on;}});}
+function planAllRooms(on){_planRooms.forEach((r,i)=>{const c=$("pck_"+i);if(c)c.checked=on;});}
 function applyPlanRooms(){
   const picked=[];
   _planRooms.forEach((r,i)=>{const c=$("pck_"+i);if(c&&c.checked){picked.push({name:($("pnm_"+i).value.trim()||r.name),type:r.type||"Great Room",floor:r.floor,tag:r.tag});}});
