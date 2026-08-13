@@ -631,13 +631,13 @@ function screenStructure(){
   $("screen").innerHTML=h;
 }
 /* ---------- plan import (PDF room take-off) ---------- */
-const PLAN_LEX=["BREEZEWAY","GARAGE","FAMILY","LIVING","GREAT","KITCHEN","DINING","BREAKFAST","PRIMARY","BEDROOM","BED","BATH","POWDER","OFFICE","STUDY","EXERCISE","MEDIA","THEATER","GYM","WINE","LAUNDRY","MUD","PANTRY","FOYER","ENTRY","HALL","STAIR","CLOSET","STORAGE","DECK","PATIO","TERRACE","ROOF","COURTYARD","ADU","STUDIO","VESTIBULE","SITTING","LIBRARY","NOOK","LOFT","GAME","UTILITY","MECH","LANDING","WIC","DRESSING","SUITE","GUEST","ROOM"];
-const PLAN_HEAD=new Set(["ROOM","BEDROOM","BED","BATH","BATHROOM","HALL","HALLWAY","CLOSET","STUDIO","OFFICE","GYM","FOYER","ENTRY","KITCHEN","GARAGE","LAUNDRY","PANTRY","DECK","PATIO","TERRACE","COURTYARD","STORAGE","THEATER","LIBRARY","LANDING","VESTIBULE","NOOK","LOFT","DRESSING","SUITE","BREEZEWAY","MECH","POWDER","STUDY"]);
+const PLAN_LEX=["BREEZEWAY","GARAGE","FAMILY","LIVING","GREAT","KITCHEN","DINING","BREAKFAST","PRIMARY","BEDROOM","BED","BATH","POWDER","OFFICE","STUDY","EXERCISE","MEDIA","THEATER","THEATRE","GYM","WINE","LAUNDRY","MUD","PANTRY","FOYER","ENTRY","HALL","STAIR","CLOSET","STORAGE","DECK","PATIO","TERRACE","ROOF","COURTYARD","ADU","STUDIO","VESTIBULE","SITTING","LIBRARY","NOOK","LOFT","GAME","UTILITY","MECH","LANDING","WIC","DRESSING","SUITE","GUEST","ROOM","CRAWLSPACE","ATTIC","BASEMENT","CELLAR","ELEVATOR","POOL","SPA","SAUNA","GALLERY","MASTER","BONUS","DEN"];
+const PLAN_HEAD=new Set(["ROOM","BEDROOM","BED","BATH","BATHROOM","HALL","HALLWAY","CLOSET","STUDIO","OFFICE","GYM","FOYER","ENTRY","KITCHEN","GARAGE","LAUNDRY","PANTRY","DECK","PATIO","TERRACE","COURTYARD","STORAGE","THEATER","LIBRARY","LANDING","VESTIBULE","NOOK","LOFT","DRESSING","SUITE","BREEZEWAY","MECH","POWDER","STUDY","CRAWLSPACE","ATTIC","BASEMENT","CELLAR","GALLERY","DEN"]);
 const PLAN_MAP=[["PRIMARY BED","Primary Bedroom"],["PRIMARY BATH","Primary Bath"],["PRIMARY CLOSET","Walk-in Closet"],["FAMILY","Family Room"],["LIVING","Living Room"],["GREAT","Great Room"],["KITCHEN","Kitchen"],["DINING","Dining Room"],["BREAKFAST","Great Room"],["POWDER","Bathroom"],["BEDROOM","Bedroom"],["BED","Bedroom"],["BATH","Bathroom"],["OFFICE","Home Office"],["STUDY","Home Office"],["MEDIA","Media / Theater"],["THEATER","Media / Theater"],["GAME","Bonus / Game Room"],["GYM","Home Gym"],["EXERCISE","Home Gym"],["WINE","Wine Room"],["FOYER","Foyer / Entry"],["ENTRY","Foyer / Entry"],["GARAGE","Garage"],["LAUNDRY","Laundry"],["MUD","Mudroom"],["STAIR","Hallway"],["HALL","Hallway"],["CLOSET","Walk-in Closet"],["WIC","Walk-in Closet"],["DRESSING","Walk-in Closet"],["STORAGE","Utility / Mechanical"],["UTILITY","Utility / Mechanical"],["MECH","Utility / Mechanical"],["PANTRY","Utility / Mechanical"],["DECK","Patio / Outdoor"],["PATIO","Patio / Outdoor"],["TERRACE","Patio / Outdoor"],["COURTYARD","Patio / Outdoor"],["BREEZEWAY","Patio / Outdoor"],["ROOF","Patio / Outdoor"]];
 const PLAN_FLOOR={"1":"First Floor","2":"Second Floor","3":"Third Floor","4":"Fourth Floor","5":"Fifth Floor"};
 function planLex(s){const u=s.toUpperCase().replace(/[^A-Z]/g,"");return u.length>1&&PLAN_LEX.some(L=>u.startsWith(L.slice(0,4)));}
 function planTitle(s){return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase();}
-function planCanon(parts){const seen=new Set(),mods=[],heads=[];parts.forEach(p=>{const u=p.toUpperCase();if(seen.has(u))return;seen.add(u);(PLAN_HEAD.has(u)?heads:mods).push(p);});return [...mods,...heads].slice(0,3).map(w=>w.toUpperCase()==="ADU"?"ADU":planTitle(w)).join(" ");}
+function planCanon(raw){const words=raw.split(/\s+/).filter(Boolean);const seen=new Set(),mods=[],heads=[],nums=[];words.forEach(p=>{const u=p.toUpperCase();if(seen.has(u))return;seen.add(u);if(/^\d+$/.test(p))nums.push(p);else if(PLAN_HEAD.has(u))heads.push(p);else mods.push(p);});return [...mods,...heads,...nums].slice(0,4).map(w=>w.toUpperCase()==="ADU"?"ADU":(/^\d+$/.test(w)?w:planTitle(w))).join(" ");}
 function planType(name){const u=name.toUpperCase();for(const kv of PLAN_MAP){if(u.indexOf(kv[0])>=0)return kv[1];}return "Great Room";}
 let _planRooms=[];
 async function parsePlanFile(inp){
@@ -664,12 +664,16 @@ async function detectRoomsFromPDF(buf){
     if(items.map(it=>it.str.toUpperCase()).join(" ").indexOf("PROPOSED FLOOR PLAN")<0)continue;
     const toks=items.map(it=>{const tr=it.transform;const h=Math.hypot(tr[2],tr[3])||it.height||8;return {s:it.str.trim(),xc:tr[4]+(it.width||0)/2,y:tr[5],h:h};});
     const tags=toks.filter(t=>/^[1-5]\d\d$/.test(t.s));
-    const alpha=toks.filter(t=>/^[A-Za-z][A-Za-z'&/]*$/.test(t.s));
+    const alpha=toks.filter(t=>t.s.length<=26&&/^[A-Za-z][A-Za-z0-9'&/.\- ]*$/.test(t.s)&&planLex(t.s));
     tags.forEach(t=>{
-      const col=alpha.filter(w=>{const dy=w.y-t.y;return dy>-t.h*0.6&&dy<t.h*4.0&&Math.abs(w.xc-t.xc)<t.h*7&&planLex(w.s);});
-      if(!col.length)return;
-      col.sort((a,b)=>(b.y-a.y)||(a.xc-b.xc));
-      if(!(t.s in rooms))rooms[t.s]={name:planCanon(col.map(w=>w.s)),floor:t.s[0]};
+      const cand=alpha.filter(w=>{const dy=w.y-t.y;return dy>-t.h*0.8&&dy<t.h*4.4&&Math.abs(w.xc-t.xc)<t.h*7.5;});
+      if(!cand.length)return;
+      const scored=cand.map(w=>({w:w,score:Math.abs(w.xc-t.xc)+((w.y-t.y)<0?-(w.y-t.y)*2.5:(w.y-t.y)*0.4)}));
+      scored.sort((a,b)=>a.score-b.score);
+      const anchor=scored[0].w, score=scored[0].score;
+      const clust=cand.filter(w=>Math.abs(w.y-anchor.y)<t.h*1.5&&Math.abs(w.xc-anchor.xc)<t.h*5.5);
+      clust.sort((a,b)=>(b.y-a.y)||(a.xc-b.xc));
+      if(!(t.s in rooms)||score<rooms[t.s].score)rooms[t.s]={name:planCanon(clust.map(w=>w.s).join(" ")),floor:t.s[0],score:score};
     });
   }
   return Object.keys(rooms).sort().map(tag=>({tag:tag,name:rooms[tag].name,floor:PLAN_FLOOR[tag[0]]||"Main Level",type:planType(rooms[tag].name)}));
