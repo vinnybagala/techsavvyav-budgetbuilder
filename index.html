@@ -679,7 +679,7 @@ function openRoomReview(rooms){
   const order=[],map={};
   rooms.forEach((r,i)=>{if(!(r.floor in map)){map[r.floor]=[];order.push(r.floor);}map[r.floor].push(i);});
   let h=`<h3>Rooms detected from plans</h3>
-    <p class="hint" style="margin-top:-4px">Found <b>${rooms.length}</b> rooms across ${order.length} floor${order.length!==1?"s":""}. Check the ones in scope, edit any name, and set the room type. Nothing is added until you confirm.</p>
+    <p class="hint" style="margin-top:-4px">Found <b>${rooms.length}</b> rooms across ${order.length} floor${order.length!==1?"s":""}. Check the ones in scope and edit any name. The <b>Type</b> is just a category (it doesn't rename the room). Nothing is added until you confirm.</p>
     <div style="max-height:54vh;overflow:auto;margin:6px 0 2px">`;
   order.forEach(fl=>{
     h+=`<div style="display:flex;align-items:center;gap:8px;margin:12px 0 4px;border-bottom:1px solid var(--line,#e5e7eb);padding-bottom:4px">
@@ -687,11 +687,15 @@ function openRoomReview(rooms){
         <button class="btn ghost mini no-print" style="margin-left:auto" onclick="planFloorAll('${esc(fl)}',true)">All</button>
         <button class="btn ghost mini no-print" onclick="planFloorAll('${esc(fl)}',false)">None</button></div>`;
     map[fl].forEach(i=>{const r=_planRooms[i];
-      h+=`<div style="display:flex;align-items:center;gap:8px;padding:3px 0">
-        <input type="checkbox" id="pck_${i}" style="width:17px;height:17px;flex:none">
-        <span class="note" style="width:34px;flex:none">${esc(r.tag)}</span>
-        <input id="pnm_${i}" value="${esc(r.name)}" style="flex:1;min-width:80px">
-        <select id="pty_${i}" style="flex:none">${ROOM_TYPES.map(t=>`<option ${t===r.type?"selected":""}>${t}</option>`).join("")}</select></div>`;});
+      h+=`<div style="padding:7px 0;border-bottom:1px solid var(--line,#eef1f4)">
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="pck_${i}" style="width:18px;height:18px;flex:none">
+          <input id="pnm_${i}" value="${esc(r.name+" - "+r.tag)}" style="flex:1;min-width:0">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin:5px 0 0 26px">
+          <span class="note" style="flex:none">Type</span>
+          <select id="pty_${i}" style="flex:1;min-width:0">${ROOM_TYPES.map(t=>`<option ${t===r.type?"selected":""}>${t}</option>`).join("")}</select></div>
+      </div>`;});
   });
   h+=`</div><div class="navbtns"><button class="btn ghost" onclick="closeModal()">Cancel</button>
       <button class="btn primary" onclick="applyPlanRooms()">Add checked rooms</button></div>`;
