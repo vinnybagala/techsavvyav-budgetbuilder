@@ -827,22 +827,32 @@ function railHTML(){const t=totals();const band=project.band/100;
 }
 
 /* STEP 4 */
-/* ---------- D-Tools export (Phase 1: rooms & systems only) ---------- */
-/* Budget Builder system names now match D-Tools system names 1:1, so we export S.name directly. */
-function dtCell(v){v=(v==null?"":String(v));return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+/* ---------- D-Tools export (Phase 1: rooms & systems) ----------
+   Matches D-Tools SI's project CSV template (exact 103-col header) so the
+   Tools ▸ CSV ▸ Import-and-Update mapping screen auto-maps. Each row is one
+   minimal placeholder line per room×system: SI needs a line item to attach a
+   Location + System to, so we carry a placeholder Model (the system name);
+   quantity is 1 and price/cost are blank for the Phase-2 product pass. */
+const DT_COLS=["Quantity","Manufacturer","Model","Component ID","Location","System","Phase","Part Number","Serial Number","IP Address 1","IP Address 2","MAC Address 1","MAC Address 2","Summarize","Optional","Bulk Item","Include in Submittal","Category","Subcategory","Short Description","Long Description","Unit Cost","Unit Price","Margin","Markup","Discount","MSRP","Labor Types","Unit Labor Hours","Owner Furnished Equipment","Non-Billable","Exclude in Calculated Items","Fixed Labor","Variable Labor","Use Labor Type","Labor Unit Cost","Labor Unit Price","Labor Margin","Labor Markup","Fixed Labor Cost","Fixed Labor Price","Fixed Labor Margin","Fixed Labor Markup","Unit Labor Hours Per Foot","Taxable","Accounting Item Name","Accounting Estimate Number","Accounting Order Number","Height","Width","Depth","Weight","Rack Mounted","Rack Units","Amps","Volts","Watts","BTU","Dispersion","PoE (Power Over Ethernet)","PSE Power Budget","Minimum PoE Class","Bulk Wire","Wire Length","Head End","Start Terminal","End Terminal","Vendor","Order Status","Order Number","Ordered Date","Expected Delivery Date","Tracking Number","Received Date","Do Not Order","Picked","Picked Date","Installed","Installed Date","Install Notes","Include in Service Plan","Custom Field 1","Custom Field 2","Custom Field 3","Custom Field 4","Custom Field 5","Custom Field 6","Custom Field 7","Custom Field 8","Custom Field 9","Custom Field 10","Custom Field 11","Custom Field 12","Custom Field 13","Custom Field 14","Custom Field 15","Custom Field 16","Custom Field 17","Custom Field 18","Custom Field 19","Custom Field 20","Custom Field 21","Custom Field 22"];
+const DT_SYS_CAT={network:"Network",control:"Control Systems",audio:"Speakers",video:"Display Devices",lighting:"Lighting",shades:"Shades",surveillance:"Surveillance",access:"Access Control"};
+function dtCell(v){v=(v==null?"":String(v));return '"'+v.replace(/"/g,'""')+'"';}
+function dtLoc(name){return String(name||"").replace(/\s*-\s*/g," ").trim();} // "Garage - 102" -> "Garage 102"
 function exportDtools(){
   if(!(meProfile&&meProfile.role==='admin')){return;} // internal (Tech Savvy) only — not GCs/architects
   const rooms=allRooms();
-  const lines=[["Location","System"].join(",")];let n=0;
+  const lines=[DT_COLS.map(dtCell).join(",")]; let n=0;
   rooms.forEach(r=>{
     Array.from(selected).forEach(k=>{
       const a=assign[k]&&assign[k][r.id]; if(!a||!a.on)return;
-      lines.push([r.name, SYSTEMS[k].name].map(dtCell).join(","));
+      const sys=SYSTEMS[k].name;
+      const row={"Quantity":"1","Manufacturer":"PLACEHOLDER","Model":sys,"Location":dtLoc(r.name),
+        "System":sys,"Phase":"Unassigned","Category":DT_SYS_CAT[k]||"","Short Description":"Budget Builder placeholder — replace with products (Phase 2)"};
+      lines.push(DT_COLS.map(c=>dtCell(row[c]!=null?row[c]:"")).join(","));
       n++;
     });
   });
   if(!n){toast("No room-level systems to export — assign systems to rooms first",true);return;}
-  const blob=new Blob([lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
+  const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob); const a=document.createElement("a");
   a.href=url; a.download=(project.name||"Budget").replace(/[\\/:*?"<>|]/g,"-")+" - D-Tools rooms & systems.csv";
   document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),1500);
